@@ -183,50 +183,74 @@ User carbon trend: ${_getCarbonTrend()}
     updateCarbonContext();
   }
   
-  /// Send a message to the chatbot
-  Future<void> sendMessage(String text) async {
-    if (text.trim().isEmpty) return;
-    
-    // Update carbon context before sending message
-    updateCarbonContext();
-    
-    // Add user message
-    final userMessage = ChatMessage.fromUser(text);
-    messages.add(userMessage);
-    
-    isLoading.value = true;
+  /// Send a message to the AI
+  Future<void> sendMessage(String messageText) async {
+    if (messageText.trim().isEmpty) return;
     
     try {
-      // Create system prompt with carbon data
-      final systemPrompt = '''
-You are a helpful assistant for a Carbon Budget Tracker app. Your primary goal is to help users understand and reduce their carbon footprint.
-
-Use the following information about the user's current carbon emissions:
-${carbonContext.value}
-
-Provide personalized advice based on this data. Focus on practical tips for reducing emissions in their highest impact categories.
-When asked about carbon reduction, focus on actionable advice with specific numbers and percentages where possible.
-Keep responses concise, friendly and encouraging.
-      ''';
+      // Add user message to the list
+      final userMessage = ChatMessage.fromUser(messageText);
+      messages.add(userMessage);
       
-      // Get response from Groq service
+      // Set loading state
+      isLoading.value = true;
+      
+      // Make sure carbon context is up to date
+      updateCarbonContext();
+      
+      // Create personalized system prompt with user's carbon data
+      final personalizedSystemPrompt = '''
+You're a carbon advisor for the Carbon Budget Tracker app. Give VERY CONCISE advice using 1-3 sentences maximum unless the user specifically asks for detailed information.
+
+USER DATA (reference briefly when relevant):
+- Daily: ${_homeController.dailyEmissions.value}g (${(_homeController.dailyEmissions.value / _homeController.dailyBudget.value * 100).toStringAsFixed(0)}% of budget)
+- Weekly: ${_homeController.weeklyEmissions.value}kg (${(_homeController.weeklyEmissions.value / _homeController.weeklyBudget.value * 100).toStringAsFixed(0)}% of budget)
+- Monthly: ${_homeController.monthlyEmissions.value}kg (${(_homeController.monthlyEmissions.value / _homeController.monthlyBudget.value * 100).toStringAsFixed(0)}% of budget)
+- Recent: ${_getRecentActivitiesText().replaceAll('\n', ' ')}
+
+KEY REQUIREMENTS:
+1. Be extremely brief (1-3 sentences)
+2. Focus on one actionable suggestion at a time
+3. Only provide detailed information if explicitly requested
+4. Use simple, direct language
+''';
+      
+      // Generate response using the selected LLM (Groq)
       final response = await _chatService?.generateResponse(
-        text, 
-        messages.toList(),
-        systemPrompt: systemPrompt,
+        messageText,
+        messages,
+        systemPrompt: personalizedSystemPrompt,
       );
       
       if (response != null) {
-        // Add assistant message
         messages.add(ChatMessage.fromAssistant(response));
+      } else {
+        messages.add(ChatMessage.fromAssistant(
+          'Sorry, I was unable to generate a response. Please try again.'
+        ));
       }
+      
     } catch (e) {
-      // Add error message
-      messages.add(ChatMessage.system(
-        'Error: Failed to get response. $e'
+      debugPrint('Error sending message: $e');
+      messages.add(ChatMessage.fromAssistant(
+        'Sorry, an error occurred: $e'
       ));
     } finally {
       isLoading.value = false;
     }
+  }
+  
+  /// Get recent activities formatted as text for the system prompt
+  String _getRecentActivitiesText() {
+    if (_homeController.recentActivities.isEmpty) {
+      return "No recent activities recorded.";
+    }
+    
+    final buffer = StringBuffer();
+    for (final activity in _homeController.recentActivities) {
+      buffer.writeln("- ${activity['title']}: ${activity['emissions']} kg CO2");
+    }
+    
+    return buffer.toString();
   }
 }

@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:lottie/lottie.dart';
+import 'package:flutter_svg/flutter_svg.dart';
 
 import '../../../core/animations/app_animations.dart';
+import '../../../core/theme/app_theme.dart';
 import '../../../core/utils/validators.dart';
 import '../../../routes/app_routes.dart';
 import '../../../shared/widgets/app_button.dart';
@@ -108,10 +110,13 @@ class _LoginScreenState extends State<LoginScreen> with SingleTickerProviderStat
                           height: 180,
                           child: Hero(
                             tag: 'app_logo',
-                            child: Icon(
-                              Icons.flutter_dash,
-                              size: 120,
-                              color: theme.colorScheme.primary,
+                            child: SvgPicture.asset(
+                              'assets/images/earth_icon.svg',
+                              height: 120,
+                              colorFilter: ColorFilter.mode(
+                                theme.colorScheme.primary,
+                                BlendMode.srcIn,
+                              ),
                             ),
                           ),
                         ),
@@ -126,7 +131,7 @@ class _LoginScreenState extends State<LoginScreen> with SingleTickerProviderStat
                     child: SlideTransition(
                       position: _slideAnimation,
                       child: Text(
-                        'Welcome Back',
+                        'Carbon Budget Tracker',
                         style: theme.textTheme.headlineMedium?.copyWith(
                           fontWeight: FontWeight.bold,
                           color: theme.colorScheme.primary,
@@ -142,7 +147,7 @@ class _LoginScreenState extends State<LoginScreen> with SingleTickerProviderStat
                     child: SlideTransition(
                       position: _slideAnimation,
                       child: Text(
-                        'Sign in to your account',
+                        'Track, Reduce, Save the Planet',
                         style: theme.textTheme.bodyLarge?.copyWith(
                           color: theme.colorScheme.onSurfaceVariant,
                         ),
@@ -250,11 +255,12 @@ class _LoginScreenState extends State<LoginScreen> with SingleTickerProviderStat
                       );
                     },
                     child: Obx(() => AppButton(
-                      text: 'Login',
+                      text: 'Sign In',
                       onPressed: _login,
                       isLoading: _authController.isLoading,
-                      icon: Icons.login,
+                      icon: Icons.nature,
                       iconLeading: false,
+                      type: ButtonType.primary,
                     )),
                   ),
                   const SizedBox(height: 16),
@@ -327,14 +333,22 @@ class _LoginScreenState extends State<LoginScreen> with SingleTickerProviderStat
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
                         Text(
-                          "Don't have an account?",
+                          "New to Carbon Budget Tracker?",
                           style: TextStyle(
                             color: theme.colorScheme.onSurfaceVariant,
                           ),
                         ),
                         TextButton(
                           onPressed: () => Get.toNamed(AppRoutes.getRouteName(AppRoute.signup)),
-                          child: Text('Sign Up'),
+                          style: TextButton.styleFrom(
+                            foregroundColor: AppColors.primary,
+                          ),
+                          child: Text(
+                            'Join Now',
+                            style: TextStyle(
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
                         ),
                       ],
                     ),
