@@ -30,12 +30,17 @@ class GroqChatService implements ChatService {
   }
   
   @override
-  Future<String> generateResponse(String message, List<ChatMessage> conversationHistory) async {
+  Future<String> generateResponse(
+    String message, 
+    List<ChatMessage> conversationHistory, {
+    String? systemPrompt,
+  }) async {
     try {
       // Create a copy of the conversation history and add the new user message
-      final messages = [...conversationHistory];
-      messages.add(ChatMessage.fromUser(message));
-      
+      final messages = conversationHistory
+          .where((msg) => msg.sender != MessageSender.system)
+          .toList();
+          
       // Convert ChatMessage to Groq message format
       final groqMessages = messages.map((message) {
         String role;
@@ -46,7 +51,7 @@ class GroqChatService implements ChatService {
           case MessageSender.assistant:
             role = 'assistant';
             break;
-          case MessageSender.system:
+          default:
             role = 'system';
             break;
         }
@@ -57,23 +62,30 @@ class GroqChatService implements ChatService {
         };
       }).toList();
       
+      // Default system prompt for carbon footprint advice
+      final defaultSystemPrompt = '''
+You are a helpful assistant for a Carbon Budget Tracker app. Your primary goal is to help users understand and reduce their carbon footprint.
+
+Provide personalized advice based on the user's carbon emission data when available. Focus on practical tips for reducing emissions.
+
+When asked about carbon reduction, explain the impact of different actions with specific numbers and percentages where possible.
+
+Keep responses concise, friendly, and encouraging.
+''';
+      
       // Prepare the request body
       final body = jsonEncode({
         'model': model,
         'messages': [
           {
             'role': 'system',
-            'content': 'You are a helpful assistant that provides very brief, concise answers. Keep responses under 2 sentences when possible. Be friendly but extremely direct.'
+            'content': systemPrompt ?? defaultSystemPrompt,
           },
           ...groqMessages
         ],
         'temperature': 0.7,
-        'max_tokens': 100,
+        'max_tokens': 800,
       });
-      
-      // Debug information
-      print('Using Groq model: $model');
-      print('API Key First 5 chars: ${apiKey.substring(0, 5)}...');
       
       // Make the API request - using the exact endpoint from Groq docs
       final response = await http.post(
@@ -84,12 +96,6 @@ class GroqChatService implements ChatService {
         },
         body: body,
       );
-      
-      // Debug information for response
-      print('Response status code: ${response.statusCode}');
-      if (response.body.isNotEmpty) {
-        print('Response body preview: ${response.body.length > 100 ? response.body.substring(0, 100) + "..." : response.body}');
-      }
       
       // Handle the response
       if (response.statusCode == 200) {

@@ -169,7 +169,7 @@ class HackathonApp extends StatelessWidget {
     const themeMode = ThemeMode.system;
     
     return GetMaterialApp(
-      title: 'Base App',
+      title: AppConstants.appName,
       debugShowCheckedModeBanner: false,
       theme: AppTheme.lightTheme,
       darkTheme: AppTheme.darkTheme,

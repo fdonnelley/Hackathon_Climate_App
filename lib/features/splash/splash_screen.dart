@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
+import 'package:flutter_svg/flutter_svg.dart';
 
 import '../../core/constants/app_constants.dart';
 import '../../core/storage/storage_service.dart';
+import '../../core/theme/app_theme.dart';
 import '../../routes/app_routes.dart';
 import '../../shared/widgets/app_loading.dart'; 
 import '../auth/controllers/auth_controller.dart';
@@ -17,7 +19,7 @@ class SplashScreen extends StatefulWidget {
   State<SplashScreen> createState() => _SplashScreenState();
 }
 
-class _SplashScreenState extends State<SplashScreen> {
+class _SplashScreenState extends State<SplashScreen> with SingleTickerProviderStateMixin {
   // Controllers
   final AuthController _authController = Get.find<AuthController>();
   final StorageService _storageService = Get.find<StorageService>();
@@ -26,9 +28,37 @@ class _SplashScreenState extends State<SplashScreen> {
   bool _isInitializing = true;
   String? _initializationError;
 
+  // Animation controller
+  late AnimationController _controller;
+  late Animation<double> _fadeInAnimation;
+  late Animation<double> _scaleAnimation;
+
   @override
   void initState() {
     super.initState();
+    
+    // Set up animations
+    _controller = AnimationController(
+      vsync: this,
+      duration: const Duration(seconds: 2),
+    );
+    
+    _fadeInAnimation = Tween<double>(begin: 0.0, end: 1.0).animate(
+      CurvedAnimation(
+        parent: _controller,
+        curve: const Interval(0.0, 0.6, curve: Curves.easeOut),
+      ),
+    );
+    
+    _scaleAnimation = Tween<double>(begin: 0.8, end: 1.0).animate(
+      CurvedAnimation(
+        parent: _controller,
+        curve: const Interval(0.0, 0.6, curve: Curves.easeOut),
+      ),
+    );
+    
+    // Start animation
+    _controller.forward();
     
     // Initialize and navigate after delay
     _initializeAndNavigate();
@@ -36,6 +66,7 @@ class _SplashScreenState extends State<SplashScreen> {
 
   @override
   void dispose() {
+    _controller.dispose();
     super.dispose();
   }
 
@@ -113,75 +144,85 @@ class _SplashScreenState extends State<SplashScreen> {
           padding: const EdgeInsets.symmetric(horizontal: 24.0),
           child: Center(
             child: SingleChildScrollView(
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                crossAxisAlignment: CrossAxisAlignment.center,
-                children: [
-                  // Logo or animation
-                  Container(
-                    width: 200,
-                    height: 200,
-                    decoration: BoxDecoration(
-                      color: colorScheme.primary.withAlpha(20),
-                      shape: BoxShape.circle,
-                    ),
-                    child: Center(
-                      child: Icon(
-                        Icons.flutter_dash,
-                        size: 120,
-                        color: colorScheme.primary,
-                      ),
-                    ),
-                  ),
-                  
-                  const SizedBox(height: 40),
-                  
-                  // App name
-                  Text(
-                    AppConstants.appName,
-                    style: textTheme.headlineMedium?.copyWith(
-                      fontWeight: FontWeight.bold,
-                      color: colorScheme.primary,
-                    ),
-                  ),
-                  
-                  const SizedBox(height: 8),
-                  
-                  // Tagline
-                  Text(
-                    'Your Hackathon Starter Kit',
-                    style: textTheme.bodyLarge?.copyWith(
-                      color: colorScheme.secondary,
-                    ),
-                  ),
-                  
-                  const SizedBox(height: 40),
-                  
-                  // Loading indicator or error message
-                  if (_isInitializing)
-                    const AppLoading(message: 'Initializing...')
-                  else if (_initializationError != null)
-                    Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 32.0),
+              child: AnimatedBuilder(
+                animation: _controller,
+                builder: (context, child) {
+                  return FadeTransition(
+                    opacity: _fadeInAnimation,
+                    child: ScaleTransition(
+                      scale: _scaleAnimation,
                       child: Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        crossAxisAlignment: CrossAxisAlignment.center,
                         children: [
-                          Icon(
-                            Icons.warning_amber_rounded,
-                            color: colorScheme.error,
-                            size: 40,
-                          ),
-                          const SizedBox(height: 16),
-                          Text(
-                            _initializationError!,
-                            textAlign: TextAlign.center,
-                            style: TextStyle(
-                              color: colorScheme.error,
+                          // Logo
+                          Container(
+                            width: 180,
+                            height: 180,
+                            padding: const EdgeInsets.all(20),
+                            decoration: BoxDecoration(
+                              color: AppColors.primary.withOpacity(0.1),
+                              shape: BoxShape.circle,
+                            ),
+                            child: SvgPicture.asset(
+                              AppConstants.logoImage,
+                              width: 120,
+                              height: 120,
                             ),
                           ),
+                          
+                          const SizedBox(height: 40),
+                          
+                          // App name
+                          Text(
+                            AppConstants.appName,
+                            style: textTheme.headlineMedium?.copyWith(
+                              fontWeight: FontWeight.bold,
+                              color: AppColors.primary,
+                            ),
+                          ),
+                          
+                          const SizedBox(height: 8),
+                          
+                          // Tagline
+                          Text(
+                            'Track, Reduce, Save the Planet',
+                            style: textTheme.bodyLarge?.copyWith(
+                              color: AppColors.secondary,
+                            ),
+                          ),
+                          
+                          const SizedBox(height: 40),
+                          
+                          // Loading indicator or error message
+                          if (_isInitializing)
+                            const AppLoading(message: 'Initializing...')
+                          else if (_initializationError != null)
+                            Padding(
+                              padding: const EdgeInsets.symmetric(horizontal: 32.0),
+                              child: Column(
+                                children: [
+                                  Icon(
+                                    Icons.warning_amber_rounded,
+                                    color: colorScheme.error,
+                                    size: 40,
+                                  ),
+                                  const SizedBox(height: 16),
+                                  Text(
+                                    _initializationError!,
+                                    textAlign: TextAlign.center,
+                                    style: TextStyle(
+                                      color: colorScheme.error,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
                         ],
                       ),
                     ),
-                ],
+                  );
+                }
               ),
             ),
           ),

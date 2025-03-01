@@ -19,6 +19,8 @@ import '../features/onboarding/controllers/onboarding_controller.dart';
 import '../features/profile/screens/profile_screen.dart';
 import '../features/settings/screens/settings_screen.dart';
 import '../features/splash/splash_screen.dart';
+import '../features/social/screens/leaderboard_screen.dart';
+import '../features/social/screens/friends_screen.dart';
 
 enum AppRoute {
   splash,
@@ -34,6 +36,8 @@ enum AppRoute {
   messages,
   chatbot,
   onboarding,
+  leaderboard,
+  friends,
 }
 
 /// Helper class to convert app routes to proper route strings
@@ -254,6 +258,44 @@ class AppRoutes {
             AuthMiddleware(),
           ],
         ),
+        GetPage(
+          name: getRouteName(AppRoute.leaderboard),
+          page: () => const LeaderboardScreen(),
+          customTransition: GetPageCustomTransition(
+            transitionBuilder: (context, animation, secondaryAnimation, child) {
+              return AppAnimations.pureSlideTransition(
+                context: context,
+                animation: animation,
+                secondaryAnimation: secondaryAnimation,
+                child: child,
+                direction: SlideDirection.right,
+              );
+            },
+          ),
+          transitionDuration: AppAnimations.medium,
+          middlewares: [
+            AuthMiddleware(),
+          ],
+        ),
+        GetPage(
+          name: getRouteName(AppRoute.friends),
+          page: () => const FriendsScreen(),
+          customTransition: GetPageCustomTransition(
+            transitionBuilder: (context, animation, secondaryAnimation, child) {
+              return AppAnimations.pureSlideTransition(
+                context: context,
+                animation: animation,
+                secondaryAnimation: secondaryAnimation,
+                child: child,
+                direction: SlideDirection.right,
+              );
+            },
+          ),
+          transitionDuration: AppAnimations.medium,
+          middlewares: [
+            AuthMiddleware(),
+          ],
+        ),
       ];
 
   /// Get the route name for a given AppRoute
@@ -285,6 +327,10 @@ class AppRoutes {
         return '/chatbot';
       case AppRoute.onboarding:
         return '/onboarding';
+      case AppRoute.leaderboard:
+        return '/leaderboard';
+      case AppRoute.friends:
+        return '/friends';
       default:
         return '/';
     }

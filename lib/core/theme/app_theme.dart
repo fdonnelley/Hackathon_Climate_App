@@ -148,21 +148,22 @@ class AppTypography {
 class AppColors {
   AppColors._();
   
-  // Brand Colors
-  static const Color primary = Color(0xFF009688);
-  static const Color primaryLight = Color(0xFFB2DFDB);
-  static const Color primaryDark = Color(0xFF00796B);
-  static const Color secondary = Color(0xFFE0E0E0);
-  static const Color secondaryDark = Color(0xFF9E9E9E);
-  static const Color accent = Color(0xFF00BCD4);
+  // Brand Colors - Updated to green theme with blue accent
+  static const Color primary = Color(0xFF4CAF50); // Green as main color
+  static const Color primaryLight = Color(0xFF81C784); // Light green
+  static const Color primaryDark = Color(0xFF388E3C); // Dark green
+  static const Color secondary = Color(0xFF2196F3); // Blue as secondary color
+  static const Color secondaryLight = Color(0xFF64B5F6); // Light blue
+  static const Color secondaryDark = Color(0xFF1976D2); // Dark blue
+  static const Color accent = Color(0xFF03A9F4); // Light blue accent
   
   // UI Colors
-  static const Color background = Colors.white;
-  static const Color backgroundDark = Color(0xFF121212);
+  static const Color background = Colors.white; // White background
+  static const Color backgroundDark = Color(0xFF1B5E20); // Dark green for dark mode
   static const Color card = Colors.white;
-  static const Color cardDark = Color(0xFF1E1E1E);
+  static const Color cardDark = Color(0xFF2E7D32); // Dark green for cards in dark mode
   static const Color divider = Color(0xFFE0E0E0);
-  static const Color dividerDark = Color(0xFF424242);
+  static const Color dividerDark = Color(0xFF388E3C);
   
   // Text Colors
   static const Color textDark = Color(0xFF212121);
@@ -171,10 +172,10 @@ class AppColors {
   static const Color textLightSecondary = Color(0xFFBDBDBD);
   
   // Status Colors
-  static const Color success = Color(0xFF4CAF50);
-  static const Color error = Color(0xFFF44336);
-  static const Color warning = Color(0xFFFF9800);
-  static const Color info = Color(0xFF2196F3);
+  static const Color success = Color(0xFF4CAF50); // Green for success
+  static const Color error = Color(0xFFF44336); // Red for error
+  static const Color warning = Color(0xFFFF9800); // Orange for warning
+  static const Color info = Color(0xFF2196F3); // Blue for info
 }
 
 /// Paddings and margins for the application

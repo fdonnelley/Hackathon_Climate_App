@@ -8,8 +8,8 @@ class FeatureCard extends StatelessWidget {
   /// Title of the feature
   final String title;
   
-  /// Description of the feature
-  final String description;
+  /// Description of the feature (optional)
+  final String? description;
   
   /// Background color
   final Color color;
@@ -22,7 +22,7 @@ class FeatureCard extends StatelessWidget {
     Key? key,
     required this.icon,
     required this.title,
-    required this.description,
+    this.description,
     required this.color,
     this.onTap,
   }) : super(key: key);
@@ -84,18 +84,20 @@ class FeatureCard extends StatelessWidget {
                       ),
                     ],
                   ),
-                  const SizedBox(height: 4),
-                  Expanded(
-                    child: Text(
-                      description,
-                      style: theme.textTheme.bodySmall?.copyWith(
-                        color: theme.colorScheme.onSurfaceVariant,
-                        fontSize: 11,
+                  if (description != null) ...[
+                    const SizedBox(height: 4),
+                    Expanded(
+                      child: Text(
+                        description!,
+                        style: theme.textTheme.bodySmall?.copyWith(
+                          color: theme.colorScheme.onSurfaceVariant,
+                          fontSize: 11,
+                        ),
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
                       ),
-                      maxLines: 2,
-                      overflow: TextOverflow.ellipsis,
                     ),
-                  ),
+                  ],
                 ],
               ),
             ),

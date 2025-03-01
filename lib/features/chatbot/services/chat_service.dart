@@ -1,16 +1,24 @@
 import '../models/chat_message.dart';
 
-/// Abstract class for different LLM chat implementations
+/// Interface for chat services
 abstract class ChatService {
-  /// Name of the LLM provider
+  /// Get the name of the provider
   String get providerName;
-  
-  /// Generate a response to a user message
-  Future<String> generateResponse(String message, List<ChatMessage> conversationHistory);
-  
-  /// Initialize the chat service
+
+  /// Initialize the service
   Future<void> initialize();
-  
-  /// Cleanup resources
+
+  /// Generate a response to a message
+  /// 
+  /// [message] is the user's message
+  /// [conversationHistory] is the history of the conversation
+  /// [systemPrompt] is an optional system prompt to override the default
+  Future<String> generateResponse(
+    String message, 
+    List<ChatMessage> conversationHistory, {
+    String? systemPrompt,
+  });
+
+  /// Clean up resources
   Future<void> dispose();
 }

@@ -4,9 +4,10 @@ import 'package:flutter/foundation.dart';
 import '../../../core/config/env_config.dart';
 import '../models/chat_message.dart';
 import '../services/chat_service.dart';
-import '../services/gemini_chat_service.dart';
 import '../services/groq_chat_service.dart';
-import '../services/openai_chat_service.dart';
+import '../../home/controllers/home_controller.dart';
+import '../../carbon_tracker/models/carbon_budget_model.dart';
+import '../../carbon_tracker/models/trip_model.dart';
 
 /// Controller for chatbot functionality
 class ChatbotController extends GetxController {
@@ -16,170 +17,158 @@ class ChatbotController extends GetxController {
   /// Chat messages
   final messages = <ChatMessage>[].obs;
   
-  /// Current LLM provider
+  /// Current LLM provider - fixed to Groq
   final currentLlmProvider = 'Groq'.obs;
   
-  /// Available LLM providers
-  final availableLlmProviders = <String>['Groq', 'OpenAI', 'Google Gemini'].obs;
-  
-  /// Map of provider names to services
-  final Map<String, ChatService> _serviceMap = {};
-  
-  /// Current active chat service
-  ChatService? _currentService;
+  /// Chat service
+  ChatService? _chatService;
   
   /// Environment config for API keys
   final EnvConfig _envConfig = EnvConfig();
   
+  /// Home controller for accessing carbon data
+  late HomeController _homeController;
+  
+  /// Carbon context string
+  final carbonContext = ''.obs;
+  
+  /// Public getter for the home controller
+  HomeController get homeController => _homeController;
+  
   @override
   void onInit() {
     super.onInit();
-    _initializeChatServices();
+    _initializeServices();
     
     // Add welcome message
     messages.add(ChatMessage.system(
-      'Welcome! Choose your AI model from the settings menu ⚙️'
+      'Welcome to your Carbon Budget Tracker Assistant! I can help you understand your carbon emissions and offer personalized advice to reduce your footprint.'
     ));
   }
   
   @override
   void onClose() {
-    // Clean up all services
-    for (final service in _serviceMap.values) {
-      service.dispose();
-    }
+    // Clean up service
+    _chatService?.dispose();
     super.onClose();
   }
   
-  /// Initialize chat services
-  Future<void> _initializeChatServices() async {
-    // Debugging: Print available providers
-    debugPrint('Available LLM providers: $availableLlmProviders');
-    
-    // Get API keys from environment configuration
-    final openAiApiKey = await _envConfig.openAiApiKey;
-    final geminiApiKey = await _envConfig.geminiApiKey;
-    final groqApiKey = await _envConfig.groqApiKey;
-    
-    // Debugging: Print API keys (redacted)
-    debugPrint('OpenAI API key available: ${openAiApiKey?.isNotEmpty}');
-    debugPrint('Gemini API key available: ${geminiApiKey?.isNotEmpty}');
-    debugPrint('Groq API key available: ${groqApiKey?.isNotEmpty}');
-    
-    // Create OpenAI service if key is available
-    if (openAiApiKey?.isNotEmpty ?? false) {
-      _serviceMap['OpenAI'] = OpenAIChatService(
-        apiKey: openAiApiKey ?? '',
-      );
-    } else {
-      availableLlmProviders.remove('OpenAI');
-    }
-    
-    // Create Gemini service if key is available
-    if (geminiApiKey?.isNotEmpty ?? false) {
-      _serviceMap['Google Gemini'] = GeminiChatService(
-        apiKey: geminiApiKey ?? '',
-      );
-    } else {
-      availableLlmProviders.remove('Google Gemini');
-    }
-    
-    // Create Groq service - we'll use this as the default
-    _serviceMap['Groq'] = GroqChatService(
-      apiKey: groqApiKey ?? '', // Will be empty string if not set
-    );
-    
-    // Get the default provider from environment config or use Groq if not set
-    final savedProvider = await _envConfig.defaultLlmProvider;
-    if (availableLlmProviders.contains(savedProvider) && _serviceMap.containsKey(savedProvider)) {
-      currentLlmProvider.value = savedProvider;
-    } else {
-      currentLlmProvider.value = 'Groq';
-    }
-    
-    // Debugging: Print service map and current provider
-    debugPrint('Service map contains: ${_serviceMap.keys.toList()}');
-    debugPrint('Current LLM provider: ${currentLlmProvider.value}');
-    
-    // Set default service
-    _currentService = _serviceMap[currentLlmProvider.value];
-    
-    // Initialize default service
+  /// Initialize required services
+  Future<void> _initializeServices() async {
     try {
-      await _currentService?.initialize();
-      
-      // Add message if provider was successfully initialized
-      messages.add(ChatMessage.system(
-        'Using ${currentLlmProvider.value} as your AI provider'
-      ));
-    } catch (e) {
-      debugPrint('Error initializing default service: $e');
-      
-      // Try to find a service that will initialize
-      bool foundWorking = false;
-      for (final provider in availableLlmProviders) {
-        if (provider != currentLlmProvider.value && _serviceMap.containsKey(provider)) {
-          try {
-            currentLlmProvider.value = provider;
-            _currentService = _serviceMap[provider];
-            await _currentService?.initialize();
-            messages.add(ChatMessage.system(
-              'Switched to ${currentLlmProvider.value} due to initialization error'
-            ));
-            foundWorking = true;
-            break;
-          } catch (e) {
-            debugPrint('Error initializing alternative service $provider: $e');
-          }
-        }
+      // Get Home controller for carbon data
+      if (!Get.isRegistered<HomeController>()) {
+        Get.put(HomeController());
       }
+      _homeController = Get.find<HomeController>();
       
-      if (!foundWorking) {
+      // Get Groq API key
+      final groqApiKey = await _envConfig.groqApiKey;
+      
+      if (groqApiKey?.isEmpty ?? true) {
+        debugPrint('Warning: Groq API key is not set');
         messages.add(ChatMessage.system(
-          'Warning: Could not initialize any LLM service. Please check your API keys.'
+          'Warning: Groq API key is not configured. Chatbot functionality may be limited.'
         ));
       }
+      
+      // Initialize Groq service
+      _chatService = GroqChatService(
+        apiKey: groqApiKey ?? '',
+      );
+      
+      await _chatService?.initialize();
+      
+      // Generate carbon context
+      updateCarbonContext();
+      
+    } catch (e) {
+      debugPrint('Error initializing chatbot services: $e');
+      messages.add(ChatMessage.system(
+        'Error initializing chatbot: $e'
+      ));
     }
   }
   
-  /// Set the LLM provider to use
-  Future<void> setLlmProvider(String providerName) async {
-    if (!_serviceMap.containsKey(providerName)) {
-      messages.add(ChatMessage.system(
-        'Provider $providerName is not available'
-      ));
-      return;
-    }
-    
-    isLoading.value = true;
-    
+  /// Update carbon context string with latest user data
+  void updateCarbonContext() {
     try {
-      // Initialize the new service if it hasn't been already
-      await _serviceMap[providerName]?.initialize();
+      final dailyBudget = _homeController.dailyBudget.value;
+      final dailyEmissions = _homeController.dailyEmissions.value;
+      final dailyPercentage = (dailyEmissions / dailyBudget * 100).toStringAsFixed(1);
       
-      // Update current service
-      _currentService = _serviceMap[providerName];
-      currentLlmProvider.value = providerName;
+      final weeklyBudget = _homeController.weeklyBudget.value;
+      final weeklyEmissions = _homeController.weeklyEmissions.value;
+      final weeklyPercentage = (weeklyEmissions / weeklyBudget * 100).toStringAsFixed(1);
       
-      // Try to save preference, but don't fail if it doesn't work
-      try {
-        await _envConfig.setDefaultLlmProvider(providerName);
-      } catch (e) {
-        debugPrint('Failed to save provider preference: $e');
-        // Continue anyway, it's not critical
+      final monthlyBudget = _homeController.monthlyBudget.value;
+      final monthlyEmissions = _homeController.monthlyEmissions.value;
+      final monthlyPercentage = (monthlyEmissions / monthlyBudget * 100).toStringAsFixed(1);
+      
+      // Get activities summary
+      final activities = _homeController.recentActivities;
+      String activitySummary = '';
+      
+      if (activities.isNotEmpty) {
+        // Group by type
+        final Map<String, double> typeEmissions = {};
+        
+        for (final activity in activities) {
+          final type = activity['type'] as String;
+          final emissions = activity['emissions'] as double;
+          
+          typeEmissions[type] = (typeEmissions[type] ?? 0) + emissions;
+        }
+        
+        // Convert to summary
+        typeEmissions.forEach((type, emissions) {
+          activitySummary += '$type: ${emissions.toStringAsFixed(1)} kg CO2, ';
+        });
+        
+        // Remove trailing comma
+        if (activitySummary.isNotEmpty) {
+          activitySummary = activitySummary.substring(0, activitySummary.length - 2);
+        }
       }
       
-      // Add system message about the change
-      messages.add(ChatMessage.system(
-        'Switched to ${_currentService?.providerName} model'
-      ));
+      // Build context
+      carbonContext.value = '''
+Carbon budget status:
+- Daily: ${dailyEmissions.toStringAsFixed(1)}g / ${dailyBudget.toStringAsFixed(1)}g ($dailyPercentage%)
+- Weekly: ${weeklyEmissions.toStringAsFixed(1)}kg / ${weeklyBudget.toStringAsFixed(1)}kg ($weeklyPercentage%)
+- Monthly: ${monthlyEmissions.toStringAsFixed(1)}kg / ${monthlyBudget.toStringAsFixed(1)}kg ($monthlyPercentage%)
+
+Recent activity emissions by category: $activitySummary
+
+User carbon trend: ${_getCarbonTrend()}
+      ''';
+      
     } catch (e) {
-      // Add error message
-      messages.add(ChatMessage.system(
-        'Failed to switch to $providerName: $e'
-      ));
-    } finally {
-      isLoading.value = false;
+      debugPrint('Error updating carbon context: $e');
+      carbonContext.value = 'Error retrieving carbon data: $e';
+    }
+  }
+  
+  /// Get trend description based on emissions data
+  String _getCarbonTrend() {
+    try {
+      final dailyBudget = _homeController.dailyBudget.value;
+      final dailyEmissions = _homeController.dailyEmissions.value;
+      final dailyPercentage = dailyEmissions / dailyBudget * 100;
+      
+      if (dailyPercentage < 50) {
+        return 'Excellent progress! Well below budget';
+      } else if (dailyPercentage < 75) {
+        return 'Good progress, on track to meet goals';
+      } else if (dailyPercentage < 90) {
+        return 'Close to budget limit, minor adjustments needed';
+      } else if (dailyPercentage < 100) {
+        return 'Almost at budget limit, consider reducing emissions';
+      } else {
+        return 'Exceeding budget, immediate action recommended';
+      }
+    } catch (e) {
+      return 'Unable to determine trend';
     }
   }
   
@@ -187,13 +176,19 @@ class ChatbotController extends GetxController {
   void clearChat() {
     messages.clear();
     messages.add(ChatMessage.system(
-      'Chat cleared! What would you like to talk about?'
+      'Welcome to your Carbon Budget Tracker Assistant! I can help you understand your carbon emissions and offer personalized advice to reduce your footprint.'
     ));
+    
+    // Update carbon context
+    updateCarbonContext();
   }
   
   /// Send a message to the chatbot
   Future<void> sendMessage(String text) async {
     if (text.trim().isEmpty) return;
+    
+    // Update carbon context before sending message
+    updateCarbonContext();
     
     // Add user message
     final userMessage = ChatMessage.fromUser(text);
@@ -202,10 +197,23 @@ class ChatbotController extends GetxController {
     isLoading.value = true;
     
     try {
-      // Get response from current service
-      final response = await _currentService?.generateResponse(
+      // Create system prompt with carbon data
+      final systemPrompt = '''
+You are a helpful assistant for a Carbon Budget Tracker app. Your primary goal is to help users understand and reduce their carbon footprint.
+
+Use the following information about the user's current carbon emissions:
+${carbonContext.value}
+
+Provide personalized advice based on this data. Focus on practical tips for reducing emissions in their highest impact categories.
+When asked about carbon reduction, focus on actionable advice with specific numbers and percentages where possible.
+Keep responses concise, friendly and encouraging.
+      ''';
+      
+      // Get response from Groq service
+      final response = await _chatService?.generateResponse(
         text, 
         messages.toList(),
+        systemPrompt: systemPrompt,
       );
       
       if (response != null) {
@@ -215,7 +223,7 @@ class ChatbotController extends GetxController {
     } catch (e) {
       // Add error message
       messages.add(ChatMessage.system(
-        'Error: Failed to get response from ${_currentService?.providerName}. $e'
+        'Error: Failed to get response. $e'
       ));
     } finally {
       isLoading.value = false;
