@@ -21,7 +21,6 @@ import 'features/home/screens/home_screen.dart';
 import 'features/list/controllers/list_controller.dart';
 import 'features/list/screens/list_screen.dart';
 import 'features/messages/screens/messages_screen.dart';
-import 'features/onboarding/controllers/onboarding_controller.dart';
 import 'features/profile/screens/profile_screen.dart';
 import 'features/settings/controllers/settings_controller.dart';
 import 'features/settings/screens/settings_screen.dart';
@@ -88,7 +87,6 @@ void _registerControllers() {
   Get.put(SettingsController(), permanent: true);
   Get.put(ListController(), permanent: true);
   Get.put(ChatbotController(), permanent: true);
-  Get.put(OnboardingController(), permanent: true);
 }
 
 /// App that displays a critical error message when initialization fails

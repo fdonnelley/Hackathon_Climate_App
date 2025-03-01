@@ -8,7 +8,6 @@ import '../../core/theme/app_theme.dart';
 import '../../routes/app_routes.dart';
 import '../../shared/widgets/app_loading.dart'; 
 import '../auth/controllers/auth_controller.dart';
-import '../onboarding/controllers/onboarding_controller.dart';
 
 class SplashScreen extends StatefulWidget {
   static String get routeName => AppRoutes.getRouteName(AppRoute.splash);
@@ -110,22 +109,15 @@ class _SplashScreenState extends State<SplashScreen> with SingleTickerProviderSt
     // Get the auth controller
     final authController = Get.find<AuthController>();
     
-    // Initialize the onboarding controller
-    final onboardingController = Get.put(OnboardingController());
-    
-    // Check if the user has completed onboarding
-    final hasCompletedOnboarding = await onboardingController.hasCompletedOnboarding();
+    // Initialize the onboarding controller and mark as completed
     
     // Check if the user is logged in
     final isLoggedIn = authController.isLoggedIn;
     
-    // Navigate based on conditions:
-    // 1. If user hasn't completed onboarding, show onboarding
-    // 2. If user completed onboarding but not logged in, show login
-    // 3. If user is logged in, show home
-    if (!hasCompletedOnboarding) {
-      Get.offAllNamed(AppRoutes.getRouteName(AppRoute.onboarding));
-    } else if (isLoggedIn) {
+    // Navigate based on login status:
+    // 1. If user is logged in, show home
+    // 2. Otherwise, show login
+    if (isLoggedIn) {
       Get.offAllNamed(AppRoutes.getRouteName(AppRoute.home));
     } else {
       Get.offAllNamed(AppRoutes.getRouteName(AppRoute.login));

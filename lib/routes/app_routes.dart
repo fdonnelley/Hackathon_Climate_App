@@ -14,8 +14,6 @@ import '../features/chatbot/screens/chatbot_screen.dart';
 import '../features/home/screens/home_screen.dart';
 import '../features/list/screens/list_screen.dart';
 import '../features/messages/screens/messages_screen.dart';
-import '../features/onboarding/screens/onboarding_screen.dart';
-import '../features/onboarding/controllers/onboarding_controller.dart';
 import '../features/profile/screens/profile_screen.dart';
 import '../features/settings/screens/settings_screen.dart';
 import '../features/splash/splash_screen.dart';
@@ -35,7 +33,6 @@ enum AppRoute {
   analytics,
   messages,
   chatbot,
-  onboarding,
   leaderboard,
   friends,
 }
@@ -50,13 +47,6 @@ class AppRoutes {
         GetPage(
           name: getRouteName(AppRoute.splash),
           page: () => const SplashScreen(),
-          transition: Transition.fadeIn,
-          transitionDuration: AppAnimations.medium,
-        ),
-        GetPage(
-          name: getRouteName(AppRoute.onboarding),
-          page: () => const OnboardingScreen(),
-          binding: OnboardingBinding(),
           transition: Transition.fadeIn,
           transitionDuration: AppAnimations.medium,
         ),
@@ -325,8 +315,6 @@ class AppRoutes {
         return '/messages';
       case AppRoute.chatbot:
         return '/chatbot';
-      case AppRoute.onboarding:
-        return '/onboarding';
       case AppRoute.leaderboard:
         return '/leaderboard';
       case AppRoute.friends:
@@ -341,14 +329,6 @@ class AppRoutes {
 class AuthBinding extends Bindings {
   @override
   void dependencies() {
-    // Add your authentication related dependencies here
-  }
-}
-
-/// Binding for onboarding related dependencies
-class OnboardingBinding extends Bindings {
-  @override
-  void dependencies() {
-    Get.lazyPut<OnboardingController>(() => OnboardingController());
+    // This will be handled by the controller
   }
 }
