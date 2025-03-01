@@ -14,6 +14,215 @@ class TransportationStep extends StatelessWidget {
     required this.controller,
   }) : super(key: key);
 
+  void _addTransportationMethod(BuildContext context) {
+    showModalBottomSheet(
+      context: context,
+      builder: (context) {
+        return Stepper(
+          steps: [
+            Step(
+              title: const Text('Transportation Mode'),
+              content: Obx(() => DropdownButtonFormField<TransportMode>(
+                decoration: const InputDecoration(
+                  labelText: 'Transportation Type',
+                  border: OutlineInputBorder(),
+                ),
+                value: controller.selectedTransportMode.value,
+                items: TransportMode.values.map((mode) {
+                  return DropdownMenuItem<TransportMode>(
+                    value: mode,
+                    child: Row(
+                      children: [
+                        Icon(_getTransportIcon(mode)),
+                        const SizedBox(width: 8.0),
+                        Text(mode.displayName),
+                      ],
+                    ),
+                  );
+                }).toList(),
+                onChanged: (value) {
+                  if (value != null) {
+                    controller.selectedTransportMode.value = value;
+                  }
+                },
+              )),
+            ),
+            Step(
+              title: const Text('Car Type'),
+              content: Obx(() => Visibility(
+                visible: controller.selectedTransportMode.value == TransportMode.car,
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Car Type',
+                      style: Theme.of(context).textTheme.titleSmall,
+                    ),
+                    
+                    const SizedBox(height: 8.0),
+                    
+                    Wrap(
+                      spacing: 8.0,
+                      runSpacing: 8.0,
+                      children: CarType.values.map((type) {
+                        return Obx(() => ChoiceChip(
+                          label: Text(type.displayName),
+                          selected: controller.selectedCarType.value == type,
+                          onSelected: (selected) {
+                            if (selected) {
+                              controller.setCarType(type);
+                            }
+                          },
+                        ));
+                      }).toList(),
+                    ),
+                    
+                    const SizedBox(height: 16.0),
+                    
+                    // Car usage type selection (personal, taxi, carpool)
+                    Text(
+                      'How do you use this car?',
+                      style: Theme.of(context).textTheme.titleSmall,
+                    ),
+                    
+                    const SizedBox(height: 8.0),
+                    
+                    Wrap(
+                      spacing: 8.0,
+                      runSpacing: 8.0,
+                      children: CarUsageType.values.map((type) {
+                        return Obx(() => ChoiceChip(
+                          label: Text(type.displayName),
+                          selected: controller.selectedCarUsageType.value == type,
+                          onSelected: (selected) {
+                            if (selected) {
+                              controller.setCarUsageType(type);
+                            }
+                          },
+                        ));
+                      }).toList(),
+                    ),
+                    
+                    // Carpool size input (only for carpool)
+                    Obx(() => Visibility(
+                      visible: controller.selectedCarUsageType.value == CarUsageType.carpool,
+                      child: Padding(
+                        padding: const EdgeInsets.only(top: 16.0),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              'Number of people in carpool:',
+                              style: Theme.of(context).textTheme.bodyMedium,
+                            ),
+                            const SizedBox(height: 8.0),
+                            Row(
+                              children: [
+                                Expanded(
+                                  child: Slider(
+                                    value: controller.carpoolSize.value.toDouble(),
+                                    min: 2,
+                                    max: 8,
+                                    divisions: 6,
+                                    label: controller.carpoolSize.value.toString(),
+                                    onChanged: (value) {
+                                      controller.setCarpoolSize(value.toInt());
+                                    },
+                                  ),
+                                ),
+                                SizedBox(
+                                  width: 40,
+                                  child: Text(
+                                    '${controller.carpoolSize.value}',
+                                    style: Theme.of(context).textTheme.titleMedium,
+                                    textAlign: TextAlign.center,
+                                  ),
+                                ),
+                              ],
+                            ),
+                            Text(
+                              'Your emissions will be divided by the number of people',
+                              style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                                fontStyle: FontStyle.italic,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    )),
+                    
+                    const SizedBox(height: 16.0),
+                  ],
+                ),
+              )),
+            ),
+            Step(
+              title: const Text('Public Transportation'),
+              content: Obx(() => Visibility(
+                visible: controller.selectedTransportMode.value == TransportMode.publicTransportation,
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Public Transportation Type',
+                      style: Theme.of(context).textTheme.titleSmall,
+                    ),
+                    
+                    const SizedBox(height: 8.0),
+                    
+                    Wrap(
+                      spacing: 8.0,
+                      runSpacing: 8.0,
+                      children: PublicTransportType.values.map((type) {
+                        return Obx(() => ChoiceChip(
+                          label: Text(type.displayName),
+                          selected: controller.selectedPublicTransportType.value == type,
+                          onSelected: (selected) {
+                            if (selected) {
+                              controller.setPublicTransportType(type);
+                            }
+                          },
+                        ));
+                      }).toList(),
+                    ),
+                    
+                    const SizedBox(height: 16.0),
+                    
+                    Text(
+                      'Public transportation emissions are calculated based on passenger miles',
+                      style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                        fontStyle: FontStyle.italic,
+                        color: Colors.green.shade700,
+                      ),
+                    ),
+                    
+                    const SizedBox(height: 16.0),
+                  ],
+                ),
+              )),
+            ),
+            Step(
+              title: const Text('Miles Per Week'),
+              content: TextField(
+                controller: controller.mileageController,
+                decoration: InputDecoration(
+                  labelText: 'Miles Per Week',
+                  hintText: controller.averageMileage.toStringAsFixed(0),
+                  suffixText: 'miles',
+                  border: OutlineInputBorder(),
+                ),
+                keyboardType: TextInputType.number,
+                inputFormatters: [
+                  FilteringTextInputFormatter.digitsOnly,
+                ],
+              ),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return SingleChildScrollView(
@@ -40,317 +249,26 @@ class TransportationStep extends StatelessWidget {
           
           const SizedBox(height: 32.0),
           
-          // Transportation input form
-          Container(
-            padding: const EdgeInsets.all(16.0),
-            decoration: BoxDecoration(
-              color: Colors.grey.withOpacity(0.1),
-              borderRadius: BorderRadius.circular(12.0),
-            ),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  'Add Transportation Method',
-                  style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                    fontWeight: FontWeight.bold,
-                  ),
+          // Add transportation method button
+          Center(
+            child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 12.0),
+            child: ElevatedButton.icon(
+              onPressed: () => _addTransportationMethod(context),
+              icon: const Icon(Icons.add, size: 18.0),
+              label: const Text('Add Method', style: TextStyle(fontSize: 16.0)),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Theme.of(context).primaryColor.withOpacity(0.1),
+                foregroundColor: Theme.of(context).primaryColor,
+                shape: const RoundedRectangleBorder(
+                  borderRadius: BorderRadius.all(Radius.circular(24.0)),
                 ),
-                
-                const SizedBox(height: 16.0),
-                
-                // Transportation mode selection
-                Obx(() => DropdownButtonFormField<TransportMode>(
-                  decoration: const InputDecoration(
-                    labelText: 'Transportation Type',
-                    border: OutlineInputBorder(),
-                  ),
-                  value: controller.selectedTransportMode.value,
-                  items: TransportMode.values.map((mode) {
-                    return DropdownMenuItem<TransportMode>(
-                      value: mode,
-                      child: Row(
-                        children: [
-                          Icon(_getTransportIcon(mode)),
-                          const SizedBox(width: 8.0),
-                          Text(mode.displayName),
-                        ],
-                      ),
-                    );
-                  }).toList(),
-                  onChanged: (value) {
-                    if (value != null) {
-                      controller.selectedTransportMode.value = value;
-                    }
-                  },
-                )),
-                
-                const SizedBox(height: 16.0),
-                
-                // Car type selection (only for car)
-                Obx(() => Visibility(
-                  visible: controller.selectedTransportMode.value == TransportMode.car,
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        'Car Type',
-                        style: Theme.of(context).textTheme.titleSmall,
-                      ),
-                      
-                      const SizedBox(height: 8.0),
-                      
-                      Wrap(
-                        spacing: 8.0,
-                        runSpacing: 8.0,
-                        children: CarType.values.map((type) {
-                          return Obx(() => ChoiceChip(
-                            label: Text(type.displayName),
-                            selected: controller.selectedCarType.value == type,
-                            onSelected: (selected) {
-                              if (selected) {
-                                controller.setCarType(type);
-                              }
-                            },
-                          ));
-                        }).toList(),
-                      ),
-                      
-                      const SizedBox(height: 16.0),
-                      
-                      // Car usage type selection (personal, taxi, carpool)
-                      Text(
-                        'How do you use this car?',
-                        style: Theme.of(context).textTheme.titleSmall,
-                      ),
-                      
-                      const SizedBox(height: 8.0),
-                      
-                      Wrap(
-                        spacing: 8.0,
-                        runSpacing: 8.0,
-                        children: CarUsageType.values.map((type) {
-                          return Obx(() => ChoiceChip(
-                            label: Text(type.displayName),
-                            selected: controller.selectedCarUsageType.value == type,
-                            onSelected: (selected) {
-                              if (selected) {
-                                controller.setCarUsageType(type);
-                              }
-                            },
-                          ));
-                        }).toList(),
-                      ),
-                      
-                      // Carpool size input (only for carpool)
-                      Obx(() => Visibility(
-                        visible: controller.selectedCarUsageType.value == CarUsageType.carpool,
-                        child: Padding(
-                          padding: const EdgeInsets.only(top: 16.0),
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(
-                                'Number of people in carpool:',
-                                style: Theme.of(context).textTheme.bodyMedium,
-                              ),
-                              const SizedBox(height: 8.0),
-                              Row(
-                                children: [
-                                  Expanded(
-                                    child: Slider(
-                                      value: controller.carpoolSize.value.toDouble(),
-                                      min: 2,
-                                      max: 8,
-                                      divisions: 6,
-                                      label: controller.carpoolSize.value.toString(),
-                                      onChanged: (value) {
-                                        controller.setCarpoolSize(value.toInt());
-                                      },
-                                    ),
-                                  ),
-                                  SizedBox(
-                                    width: 40,
-                                    child: Text(
-                                      '${controller.carpoolSize.value}',
-                                      style: Theme.of(context).textTheme.titleMedium,
-                                      textAlign: TextAlign.center,
-                                    ),
-                                  ),
-                                ],
-                              ),
-                              Text(
-                                'Your emissions will be divided by the number of people',
-                                style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                                  fontStyle: FontStyle.italic,
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                      )),
-                      
-                      const SizedBox(height: 16.0),
-                    ],
-                  ),
-                )),
-                
-                // Public transportation type selection (only for public transportation)
-                Obx(() => Visibility(
-                  visible: controller.selectedTransportMode.value == TransportMode.publicTransportation,
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        'Public Transportation Type',
-                        style: Theme.of(context).textTheme.titleSmall,
-                      ),
-                      
-                      const SizedBox(height: 8.0),
-                      
-                      Wrap(
-                        spacing: 8.0,
-                        runSpacing: 8.0,
-                        children: PublicTransportType.values.map((type) {
-                          return Obx(() => ChoiceChip(
-                            label: Text(type.displayName),
-                            selected: controller.selectedPublicTransportType.value == type,
-                            onSelected: (selected) {
-                              if (selected) {
-                                controller.setPublicTransportType(type);
-                              }
-                            },
-                          ));
-                        }).toList(),
-                      ),
-                      
-                      const SizedBox(height: 16.0),
-                      
-                      Text(
-                        'Public transportation emissions are calculated based on passenger miles',
-                        style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                          fontStyle: FontStyle.italic,
-                          color: Colors.green.shade700,
-                        ),
-                      ),
-                      
-                      const SizedBox(height: 16.0),
-                    ],
-                  ),
-                )),
-                
-                // Miles per week input
-                TextField(
-                  controller: controller.mileageController,
-                  decoration: InputDecoration(
-                    labelText: 'Miles Per Week',
-                    hintText: controller.averageMileage.toStringAsFixed(0),
-                    suffixText: 'miles',
-                    border: OutlineInputBorder(),
-                  ),
-                  keyboardType: TextInputType.number,
-                  inputFormatters: [
-                    FilteringTextInputFormatter.digitsOnly,
-                  ],
-                ),
-                
-                const SizedBox(height: 8.0),
-                
-                Text(
-                  'Average weekly mileage is ${controller.averageMileage.toStringAsFixed(0)} miles',
-                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                    fontStyle: FontStyle.italic,
-                  ),
-                ),
-                
-                const SizedBox(height: 16.0),
-                
-                // MPG input (only for car)
-                Obx(() => Visibility(
-                  visible: controller.selectedTransportMode.value == TransportMode.car && controller.selectedCarType.value != CarType.electric,
-                  child: Column(
-                    children: [
-                      TextField(
-                        controller: controller.mpgController,
-                        decoration: InputDecoration(
-                          labelText: 'Miles Per Gallon (MPG)',
-                          hintText: controller.selectedCarType.value.defaultMpg.toStringAsFixed(0),
-                          suffixText: 'MPG',
-                          border: OutlineInputBorder(),
-                        ),
-                        keyboardType: TextInputType.number,
-                        inputFormatters: [
-                          FilteringTextInputFormatter.digitsOnly,
-                        ],
-                      ),
-                      
-                      const SizedBox(height: 8.0),
-                      
-                      Obx(() => Text(
-                        'If you don\'t know your MPG, leave blank for ${controller.selectedCarType.value.displayName} average (${controller.selectedCarType.value.defaultMpg.toStringAsFixed(0)} MPG)',
-                        style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                          fontStyle: FontStyle.italic,
-                        ),
-                      )),
-                      
-                      const SizedBox(height: 16.0),
-                    ],
-                  ),
-                )),
-                
-                // Zero emission indicator for walking, biking, electric car
-                Obx(() => Visibility(
-                  visible: controller.selectedTransportMode.value == TransportMode.walking || 
-                          controller.selectedTransportMode.value == TransportMode.bicycle ||
-                          (controller.selectedTransportMode.value == TransportMode.car && 
-                           controller.selectedCarType.value == CarType.electric),
-                  child: Padding(
-                    padding: const EdgeInsets.only(bottom: 16.0),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Row(
-                          children: [
-                            Icon(Icons.eco, color: Colors.green.shade700),
-                            const SizedBox(width: 8.0),
-                            Expanded(
-                              child: Text(
-                                'Zero emissions mode of transportation!',
-                                style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                                  color: Colors.green.shade700,
-                                  fontWeight: FontWeight.bold,
-                                ),
-                                overflow: TextOverflow.visible,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ],
-                    ),
-                  ),
-                )),
-                
-                // Add button
-                SizedBox(
-                  width: double.infinity,
-                  child: ElevatedButton.icon(
-                    onPressed: () {
-                      if (controller.mileageController.text.isNotEmpty) {
-                        controller.addTransportationMethod();
-                      }
-                    },
-                    icon: const Icon(Icons.add),
-                    label: const Text('Add Transportation Method'),
-                    style: ElevatedButton.styleFrom(
-                      padding: const EdgeInsets.symmetric(vertical: 12.0),
-                    ),
-                  ),
-                ),
-              ],
+              ),
             ),
           ),
+          ),
           
-          const SizedBox(height: 24.0),
+          const SizedBox(height: 16.0),
           
           // List of added transportation methods
           Obx(() {
