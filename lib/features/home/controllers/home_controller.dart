@@ -11,22 +11,22 @@ class HomeController extends GetxController {
   /// Selected carbon goal level
   final goalLevel = Rx<CarbonGoalLevel?>(null);
   
-  /// Daily carbon budget in grams
+  /// Daily carbon budget in pounds
   final dailyBudget = 0.0.obs;
   
-  /// Weekly carbon budget in kilograms - the target goal
+  /// Weekly carbon budget in pounds
   final weeklyBudget = 0.0.obs;
   
-  /// Monthly carbon budget in kilograms
+  /// Monthly carbon budget in pounds
   final monthlyBudget = 0.0.obs;
   
-  /// Current daily carbon emissions in grams
+  /// Current daily carbon emissions in pounds
   final dailyEmissions = 0.0.obs;
   
-  /// Current weekly carbon emissions in kilograms
+  /// Current weekly carbon emissions in pounds
   final weeklyEmissions = 0.0.obs;
   
-  /// Current monthly carbon emissions in kilograms
+  /// Current monthly carbon emissions in pounds
   final monthlyEmissions = 0.0.obs;
   
   /// Percentage of weekly budget used
@@ -36,40 +36,7 @@ class HomeController extends GetxController {
   final trackingStartDate = DateTime.now().obs;
 
   /// List of recent activities
-  final recentActivities = <Map<String, dynamic>>[
-    {
-      'type': 'transportation',
-      'subType': null,
-      'title': 'Bus to Work',
-      'emissions': 0.8,
-      'timestamp': DateTime.now().subtract(const Duration(hours: 3)),
-      'icon': 'directions_bus',
-    },
-    {
-      'type': 'energy',
-      'subType': 'electricity',
-      'title': 'Home Electricity',
-      'emissions': 1.2,
-      'timestamp': DateTime.now().subtract(const Duration(hours: 12)),
-      'icon': 'electric_bolt',
-    },
-    {
-      'type': 'energy',
-      'subType': 'gas',
-      'title': 'Home Heating',
-      'emissions': 1.5,
-      'timestamp': DateTime.now().subtract(const Duration(hours: 18)),
-      'icon': 'gas_meter',
-    },
-    {
-      'type': 'transportation',
-      'subType': null,
-      'title': 'Cycling',
-      'emissions': 0.0,
-      'timestamp': DateTime.now().subtract(const Duration(days: 1)),
-      'icon': 'directions_bike',
-    },
-  ].obs;
+  final recentActivities = <Map<String, dynamic>>[].obs;
   
   /// Initialize controller
   @override
@@ -100,8 +67,8 @@ class HomeController extends GetxController {
     // Calculate monthly budget (weekly * 4.33)
     monthlyBudget.value = weeklyBudget.value * 4.33;
     
-    // Calculate daily budget (weekly / 7) and convert to grams
-    dailyBudget.value = (weeklyBudget.value / 7) * 1000;
+    // Calculate daily budget (weekly / 7) and convert to pounds
+    dailyBudget.value = (weeklyBudget.value / 7);
     
     // Set tracking start date to today
     trackingStartDate.value = DateTime.now();
@@ -165,7 +132,7 @@ class HomeController extends GetxController {
       'subType': subType,
       'title': title,
       'emissions': emissions,
-      'timestamp': DateTime.now(),
+      'timestamp': DateTime.now().millisecondsSinceEpoch,
       'icon': icon,
     });
     
@@ -177,13 +144,13 @@ class HomeController extends GetxController {
   
   /// Update emissions totals and percentages
   void _updateEmissions(double dailyEmissionAmount) {
-    // Update daily emissions (in grams)
-    dailyEmissions.value += dailyEmissionAmount * 1000;
+    // Update daily emissions (in pounds)
+    dailyEmissions.value += dailyEmissionAmount;
     
-    // Update weekly emissions (in kg)
+    // Update weekly emissions (in pounds)
     weeklyEmissions.value += dailyEmissionAmount;
     
-    // Update monthly emissions (in kg)
+    // Update monthly emissions (in pounds)
     monthlyEmissions.value += dailyEmissionAmount;
     
     // Calculate percentage of weekly budget used
@@ -276,7 +243,7 @@ class HomeController extends GetxController {
       'title': title,
       'description': description,
       'emissions': emissions,
-      'timestamp': timestamp ?? DateTime.now(),
+      'timestamp': timestamp ?? DateTime.now().millisecondsSinceEpoch,
       'icon': iconName,
     };
     
@@ -320,4 +287,71 @@ class HomeController extends GetxController {
   /// Get gas activities
   List<Map<String, dynamic>> get gasActivities => 
       getActivitiesByType('energy', subType: 'gas');
+  
+  /// Add carbon usage to the tracker
+  void addCarbonUsage(double emissions, String type) {
+    // Store emissions in pounds internally
+    final usage = {
+      'timestamp': DateTime.now().millisecondsSinceEpoch,
+      'emissions': emissions, // pounds CO2e
+      'type': type,
+      'title': type == 'transportation'
+          ? 'Transportation Usage'
+          : 'Energy Usage',
+      'icon': type == 'transportation' ? 'directions_car' : 'bolt',
+    };
+    
+    // Update running totals
+    dailyEmissions.value += emissions;
+    weeklyEmissions.value += emissions;
+    monthlyEmissions.value += emissions;
+    
+    // Create a new list to trigger reactive update
+    final newList = <Map<String, dynamic>>[usage, ...recentActivities];
+    
+    // Sort by timestamp (newest first)
+    newList.sort((a, b) => 
+      (b['timestamp'] as int).compareTo(a['timestamp'] as int)
+    );
+    
+    // Replace the entire list to trigger reactivity
+    recentActivities.value = newList;
+    
+    // Save update
+    _saveUsageHistory();
+    
+    // Calculate updated percentage
+    weeklyUsagePercentage.value = (weeklyEmissions.value / weeklyBudget.value).clamp(0.0, 1.0);
+    
+    // Force UI update
+    update(['carbon_usage', 'recent_activities']);
+    
+    // Debug log
+    print('Carbon usage added: $emissions lbs CO2 for $type');
+    print('Daily emissions: ${dailyEmissions.value}');
+    print('Weekly emissions: ${weeklyEmissions.value}');
+  }
+  
+  /// Save usage history to persistent storage
+  /// This method would be implemented to store data in a real app
+  void _saveUsageHistory() {
+    // In a real application, this would save the usage history to
+    // persistent storage such as shared preferences, a local database,
+    // or a cloud database.
+    
+    // For now, we'll just print a message
+    print('Saving usage history data...');
+    
+    // Example implementation:
+    // final jsonData = jsonEncode(recentActivities.map((e) => e).toList());
+    // SharedPreferences prefs = await SharedPreferences.getInstance();
+    // prefs.setString('usage_history', jsonData);
+  }
+  
+  /// Calculate week number (1-52) for a given date
+  int _getWeekNumber(DateTime date) {
+    final firstDayOfYear = DateTime(date.year, 1, 1);
+    final dayOfYear = date.difference(firstDayOfYear).inDays;
+    return ((dayOfYear / 7) + 1).floor();
+  }
 }

@@ -3,9 +3,15 @@ import 'package:get/get.dart';
 import 'package:fl_chart/fl_chart.dart';
 
 import '../../../core/theme/app_theme.dart';
+import '../../../core/utils/emissions_utils.dart';
 import '../../home/controllers/home_controller.dart';
 import '../../setup/models/setup_data_model.dart';
 import '../../../routes/app_routes.dart';
+
+/// Extension method to capitalize the first letter of a string
+extension StringExtension on String {
+  String get capitalize => this.isNotEmpty ? '${this[0].toUpperCase()}${this.substring(1)}' : this;
+}
 
 /// Screen for detailed carbon usage statistics and graphs
 class UsageDetailsScreen extends StatelessWidget {
@@ -91,7 +97,7 @@ class UsageDetailsScreen extends StatelessWidget {
                       ),
                       const SizedBox(height: 8),
                       Text(
-                        '${weeklyBudget.toStringAsFixed(1)} kg CO₂ per week',
+                        '${EmissionsUtils.formatPounds(EmissionsUtils.kgToPounds(weeklyBudget))} lbs CO₂e per week',
                         style: theme.textTheme.headlineSmall?.copyWith(
                           fontWeight: FontWeight.bold,
                           color: Colors.white,
@@ -111,7 +117,7 @@ class UsageDetailsScreen extends StatelessWidget {
                                 ),
                               ),
                               Text(
-                                '${weeklyEmissions.toStringAsFixed(1)} kg',
+                                '${EmissionsUtils.formatPounds(EmissionsUtils.kgToPounds(weeklyEmissions))} lbs',
                                 style: theme.textTheme.headlineSmall?.copyWith(
                                   color: Colors.white,
                                   fontWeight: FontWeight.bold,
@@ -228,7 +234,7 @@ class UsageDetailsScreen extends StatelessWidget {
                                   ),
                                   const SizedBox(width: 8),
                                   Text(
-                                    '${_getTypeDisplayName(entry.key)}: ${entry.value.toStringAsFixed(1)} kg (${(entry.value / homeController.weeklyEmissions.value * 100).toStringAsFixed(0)}%)',
+                                    '${_getTypeDisplayName(entry.key)}: ${EmissionsUtils.formatPounds(EmissionsUtils.kgToPounds(entry.value))} lbs (${(entry.value / homeController.weeklyEmissions.value * 100).toStringAsFixed(0)}%)',
                                     style: theme.textTheme.bodyMedium,
                                   ),
                                 ],
@@ -297,7 +303,7 @@ class UsageDetailsScreen extends StatelessWidget {
                             ),
                             title: Text(activity['title']),
                             subtitle: Text(
-                              '${activity['emissions'].toStringAsFixed(1)} kg CO₂',
+                              '${EmissionsUtils.formatPounds(EmissionsUtils.kgToPounds(activity['emissions']))} lbs CO₂e',
                             ),
                             trailing: Text(
                               _formatDate(activity['timestamp']),
@@ -446,7 +452,7 @@ class UsageDetailsScreen extends StatelessWidget {
       case 'shopping':
         return 'Shopping';
       default:
-        return type.capitalize ?? type;
+        return StringExtension(type as String).capitalize;
     }
   }
   

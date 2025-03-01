@@ -2,9 +2,11 @@ import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 
 import '../../../core/theme/app_theme.dart';
+import '../../../core/utils/emissions_utils.dart';
 import '../../../routes/app_routes.dart';
 import '../../../shared/widgets/app_button.dart';
 import '../../auth/controllers/auth_controller.dart';
+import '../../carbon_tracker/widgets/add_usage_bottom_sheet.dart';
 import '../../chatbot/controllers/chatbot_controller.dart';
 import '../controllers/home_controller.dart';
 import '../widgets/feature_card.dart';
@@ -49,15 +51,11 @@ class HomeScreen extends StatelessWidget {
       ),
       floatingActionButton: FloatingActionButton(
         onPressed: () {
-          // Make sure the ChatbotController is initialized before navigation
-          if (!Get.isRegistered<ChatbotController>()) {
-            Get.put(ChatbotController(), permanent: true);
-          }
-          Get.toNamed(AppRoutes.getRouteName(AppRoute.chatbot));
+          AddUsageBottomSheet.show();
         },
-        backgroundColor: theme.colorScheme.secondary,
-        child: const Icon(Icons.eco, color: Colors.white),
-        tooltip: 'Smart Eco Tips',
+        backgroundColor: AppColors.primary,
+        child: const Icon(Icons.add, color: Colors.white),
+        tooltip: 'Add Carbon Usage',
       ),
       body: SafeArea(
         child: SingleChildScrollView(
@@ -94,8 +92,8 @@ class HomeScreen extends StatelessWidget {
               // Carbon Budget Progress Card
               GestureDetector(
                 onTap: () {
-                  // Navigate to usage details screen
-                  Get.toNamed(AppRoutes.getRouteName(AppRoute.usageDetails));
+                  // Navigate to analytics screen instead of usage details
+                  Get.toNamed(AppRoutes.getRouteName(AppRoute.analytics));
                 },
                 child: Container(
                   padding: const EdgeInsets.all(24),
@@ -130,84 +128,59 @@ class HomeScreen extends StatelessWidget {
                               color: Colors.white,
                             ),
                           ),
-                          Row(
-                            children: [
-                              Container(
-                                padding: const EdgeInsets.symmetric(
-                                  horizontal: 12,
-                                  vertical: 6,
-                                ),
-                                decoration: BoxDecoration(
-                                  color: Colors.white.withOpacity(0.2),
-                                  borderRadius: BorderRadius.circular(16),
-                                ),
-                                child: Text(
-                                  'Daily',
-                                  style: theme.textTheme.bodyMedium?.copyWith(
-                                    color: Colors.white,
-                                    fontWeight: FontWeight.w500,
-                                  ),
-                                ),
-                              ),
-                              const SizedBox(width: 8),
-                              Container(
-                                padding: const EdgeInsets.all(4),
-                                decoration: BoxDecoration(
-                                  color: Colors.white.withOpacity(0.2),
-                                  shape: BoxShape.circle,
-                                ),
-                                child: const Icon(
-                                  Icons.arrow_forward,
-                                  color: Colors.white,
-                                  size: 16,
-                                ),
-                              ),
-                            ],
+                          Icon(
+                            Icons.arrow_forward,
+                            color: Colors.white,
+                            size: 20,
                           ),
                         ],
                       ),
                       const SizedBox(height: 20),
-                      Obx(() {
-                        final dailyUsage = homeController.dailyEmissions.value;
-                        final dailyBudget = homeController.dailyBudget.value;
-                        final usagePercent = (dailyUsage / dailyBudget).clamp(0.0, 1.0);
-                        
-                        return Column(
-                          children: [
-                            Row(
-                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                              children: [
-                                Text(
-                                  '${(usagePercent * 100).toStringAsFixed(1)}% Used',
-                                  style: theme.textTheme.titleMedium?.copyWith(
-                                    color: Colors.white,
+                      GetBuilder<HomeController>(
+                        id: 'carbon_usage',
+                        builder: (_) => Obx(() {
+                          print('homeController.goalLevel.value: ${homeController.goalLevel.value}');
+                          final weeklyUsage = homeController.weeklyEmissions.value;
+                          final weeklyBudget = homeController.weeklyBudget.value;
+                          final usagePercent = (weeklyUsage / weeklyBudget).clamp(0.0, 1.0);
+                          
+                          return Column(
+                            children: [
+                              Row(
+                                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                children: [
+                                  Text(
+                                    '${(usagePercent * 100).toStringAsFixed(1)}% Used',
+                                    style: theme.textTheme.titleMedium?.copyWith(
+                                      color: Colors.white,
+                                    ),
                                   ),
-                                ),
-                                Text(
-                                  '${dailyUsage.toStringAsFixed(1)} / ${dailyBudget.toStringAsFixed(0)} g CO₂',
-                                  style: theme.textTheme.titleMedium?.copyWith(
-                                    color: Colors.white,
+                                  Text(
+                                    '${weeklyUsage.toStringAsFixed(1)} / ${weeklyBudget.toStringAsFixed(1)} lbs CO₂e',
+                                    style: theme.textTheme.titleMedium?.copyWith(
+                                      color: Colors.white,
+                                    ),
                                   ),
-                                ),
-                              ],
-                            ),
-                            const SizedBox(height: 12),
-                            ClipRRect(
-                              borderRadius: BorderRadius.circular(8),
-                              child: LinearProgressIndicator(
-                                value: usagePercent,
-                                backgroundColor: Colors.white.withOpacity(0.2),
-                                valueColor: AlwaysStoppedAnimation<Color>(
-                                  usagePercent < 0.7 
-                                      ? Colors.white 
-                                      : AppColors.warning,
-                                ),
-                                minHeight: 8,
+                                ],
                               ),
-                            ),
-                          ],
-                        );
-                      }),
+                              const SizedBox(height: 12),
+                              ClipRRect(
+                                borderRadius: BorderRadius.circular(8),
+                                child: LinearProgressIndicator(
+                                  value: usagePercent,
+                                  backgroundColor: Colors.white.withOpacity(0.2),
+                                  valueColor: AlwaysStoppedAnimation<Color>(
+                                    usagePercent < 0.7 
+                                        ? Colors.white 
+                                        : AppColors.warning,
+                                  ),
+                                  minHeight: 8,
+                                ),
+                              ),
+                            ],
+                          );
+                        }),
+                      ),
                       const SizedBox(height: 16),
                       Row(
                         mainAxisAlignment: MainAxisAlignment.spaceAround,
@@ -215,13 +188,13 @@ class HomeScreen extends StatelessWidget {
                           _buildCarbonStat(
                             context,
                             'This Week',
-                            '${homeController.weeklyEmissions.value.toStringAsFixed(1)} kg',
+                            '${homeController.weeklyEmissions.value.toStringAsFixed(1)} lbs',
                             '${(homeController.weeklyEmissions.value / homeController.weeklyBudget.value * 100).toStringAsFixed(0)}%',
                           ),
                           _buildCarbonStat(
                             context,
                             'This Month',
-                            '${homeController.monthlyEmissions.value.toStringAsFixed(1)} kg',
+                            '${homeController.monthlyEmissions.value.toStringAsFixed(1)} lbs',
                             '${(homeController.monthlyEmissions.value / homeController.monthlyBudget.value * 100).toStringAsFixed(0)}%',
                           ),
                         ],
@@ -234,36 +207,87 @@ class HomeScreen extends StatelessWidget {
               const SizedBox(height: 32),
               
               // Feature Cards - Add Your Emissions
+              // Row(
+              //   mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              //   children: [
+              //     Text(
+              //       'Track Your Impact',
+              //       style: theme.textTheme.titleLarge?.copyWith(
+              //         fontWeight: FontWeight.bold,
+              //       ),
+              //     ),
+              //     IconButton(
+              //       onPressed: () => AddUsageBottomSheet.show(),
+              //       icon: const Icon(Icons.add_circle),
+              //       tooltip: 'Add New Usage',
+              //     ),
+              //   ],
+              // ),
+              // const SizedBox(height: 16),
+              
+              // const SizedBox(height: 32),
+              
+              // Chatbot Card
               Text(
-                'Track Your Emissions',
+                'Get AI Assistance',
                 style: theme.textTheme.titleLarge?.copyWith(
                   fontWeight: FontWeight.bold,
                 ),
               ),
               const SizedBox(height: 16),
-              GridView.count(
-                crossAxisCount: 2,
-                childAspectRatio: 1.7,
-                shrinkWrap: true,
-                physics: const NeverScrollableScrollPhysics(),
-                mainAxisSpacing: 16,
-                crossAxisSpacing: 16,
-                children: [
-                  FeatureCard(
-                    title: 'Add Trip',
-                    description: 'Log transportation',
-                    icon: Icons.directions_car,
-                    color: theme.colorScheme.primary,
-                    onTap: () => Get.toNamed(AppRoutes.getRouteName(AppRoute.list)),
+              Card(
+                elevation: 2,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(16),
+                ),
+                child: InkWell(
+                  onTap: () {
+                    // Make sure the ChatbotController is initialized before navigation
+                    if (!Get.isRegistered<ChatbotController>()) {
+                      Get.put(ChatbotController(), permanent: true);
+                    }
+                    Get.toNamed(AppRoutes.getRouteName(AppRoute.chatbot));
+                  },
+                  borderRadius: BorderRadius.circular(16),
+                  child: Padding(
+                    padding: const EdgeInsets.all(16),
+                    child: Row(
+                      children: [
+                        Container(
+                          padding: const EdgeInsets.all(12),
+                          decoration: BoxDecoration(
+                            color: Colors.green.shade100,
+                            shape: BoxShape.circle,
+                          ),
+                          child: Icon(
+                            Icons.eco,
+                            color: theme.colorScheme.secondary,
+                          ),
+                        ),
+                        const SizedBox(width: 16),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                'Smart Eco Tips',
+                                style: theme.textTheme.titleMedium?.copyWith(
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                              const SizedBox(height: 4),
+                              Text(
+                                'Get personalized advice to reduce your carbon footprint',
+                                style: theme.textTheme.bodyMedium,
+                              ),
+                            ],
+                          ),
+                        ),
+                        const Icon(Icons.chevron_right),
+                      ],
+                    ),
                   ),
-                  FeatureCard(
-                    title: 'Add Energy Use',
-                    description: 'Log electricity & gas',
-                    icon: Icons.electric_bolt,
-                    color: theme.colorScheme.secondary,
-                    onTap: () => Get.toNamed(AppRoutes.getRouteName(AppRoute.analytics)),
-                  ),
-                ],
+                ),
               ),
               
               const SizedBox(height: 32),
@@ -341,90 +365,108 @@ class HomeScreen extends StatelessWidget {
               
               const SizedBox(height: 32),
               
-              // Recent Activities
-              Text(
-                'Recent Activities',
-                style: theme.textTheme.titleLarge?.copyWith(
-                  fontWeight: FontWeight.bold,
-                ),
+              // Recent Activity
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Text(
+                    'Recent Activity',
+                    style: theme.textTheme.titleLarge?.copyWith(
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                  TextButton(
+                    onPressed: () {
+                      Get.toNamed(AppRoutes.getRouteName(AppRoute.analytics));
+                    },
+                    child: const Text('View All'),
+                  ),
+                ],
               ),
               const SizedBox(height: 16),
               
-              Obx(() {
-                final activities = homeController.recentActivities;
-                if (activities.isEmpty) {
-                  return const Center(
-                    child: Text('No recent activities'),
-                  );
-                }
-                
-                return ListView.builder(
-                  shrinkWrap: true,
-                  physics: const NeverScrollableScrollPhysics(),
-                  itemCount: activities.length.clamp(0, 3),
-                  itemBuilder: (context, index) {
-                    final activity = activities[index];
-                    
-                    // Determine icon based on activity type
-                    IconData activityIcon = Icons.eco;
-                    if (activity['icon'] != null) {
-                      // Convert string icon name to IconData
-                      switch (activity['icon']) {
-                        case 'directions_bus':
-                          activityIcon = Icons.directions_bus;
-                          break;
-                        case 'electrical_services':
-                          activityIcon = Icons.electrical_services;
-                          break;
-                        case 'directions_bike':
-                          activityIcon = Icons.directions_bike;
-                          break;
-                        default:
-                          activityIcon = Icons.eco;
-                      }
-                    }
-                    
-                    return Card(
-                      margin: const EdgeInsets.only(bottom: 12),
-                      elevation: 0,
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(16),
-                        side: BorderSide(
-                          color: theme.colorScheme.outline.withOpacity(0.2),
-                        ),
-                      ),
-                      child: ListTile(
-                        leading: CircleAvatar(
-                          backgroundColor: theme.colorScheme.primaryContainer,
-                          child: Icon(
-                            activityIcon,
-                            color: theme.colorScheme.primary,
+              // Recent activity list
+              GetBuilder<HomeController>(
+                id: 'recent_activities',
+                builder: (_) => Obx(() {
+                  if (homeController.recentActivities.isEmpty) {
+                    return const Padding(
+                      padding: EdgeInsets.symmetric(vertical: 32),
+                      child: Center(
+                        child: Text(
+                          'No activities yet. Add your first carbon usage!',
+                          style: TextStyle(
+                            color: Colors.grey,
+                            fontStyle: FontStyle.italic,
                           ),
                         ),
-                        title: Text(activity['title']),
-                        subtitle: Text(_getActivityDescription(activity)),
+                      ),
+                    );
+                  }
+                  
+                  // Just show the first 3 activities
+                  final activities = homeController.recentActivities.take(3).toList();
+                  
+                  return ListView.separated(
+                    shrinkWrap: true,
+                    physics: const NeverScrollableScrollPhysics(),
+                    itemCount: activities.length,
+                    separatorBuilder: (context, index) => const Divider(),
+                    itemBuilder: (context, index) {
+                      final activity = activities[index];
+                      return ListTile(
+                        contentPadding: EdgeInsets.zero,
+                        leading: Container(
+                          padding: const EdgeInsets.all(12),
+                          decoration: BoxDecoration(
+                            color: Colors.grey.shade100,
+                            shape: BoxShape.circle,
+                          ),
+                          child: Icon(
+                            _getIconData(activity['icon'] as String? ?? ''),
+                            color: activity['type'] == 'transportation'
+                                ? theme.colorScheme.primary
+                                : theme.colorScheme.secondary,
+                          ),
+                        ),
+                        title: Text(
+                          activity['title'] as String? ?? 'Carbon Activity',
+                          style: theme.textTheme.titleMedium,
+                        ),
+                        subtitle: Text(
+                          _getActivityDescription(activity),
+                          style: theme.textTheme.bodySmall,
+                        ),
                         trailing: Column(
                           mainAxisAlignment: MainAxisAlignment.center,
                           crossAxisAlignment: CrossAxisAlignment.end,
                           children: [
                             Text(
-                              '${activity['emissions'].toStringAsFixed(1)} kg CO₂',
-                              style: theme.textTheme.bodyMedium?.copyWith(
+                              '+${EmissionsUtils.formatPounds(activity['emissions'] as double)} lbs',
+                              style: theme.textTheme.titleSmall?.copyWith(
+                                color: theme.colorScheme.error,
                                 fontWeight: FontWeight.bold,
-                                color: theme.colorScheme.primary,
                               ),
                             ),
                             Text(
                               _getTimeAgo(activity['timestamp']),
-                              style: theme.textTheme.bodySmall,
+                              style: theme.textTheme.bodySmall?.copyWith(
+                                color: Colors.grey,
+                              ),
                             ),
                           ],
                         ),
-                      ),
-                    );
-                  },
-                );
-              }),
+                        onTap: () {
+                          Get.toNamed(
+                            AppRoutes.getRouteName(AppRoute.usageDetails),
+                            arguments: activity,
+                          );
+                        },
+                      );
+                    },
+                  );
+                }),
+              ),
               
               const SizedBox(height: 16),
               
@@ -479,9 +521,12 @@ class HomeScreen extends StatelessWidget {
     }
   }
   
-  String _getTimeAgo(DateTime timestamp) {
+  String _getTimeAgo(dynamic timestamp) {
+    final DateTime dateTime = timestamp is int 
+        ? DateTime.fromMillisecondsSinceEpoch(timestamp) 
+        : timestamp;
     final now = DateTime.now();
-    final difference = now.difference(timestamp);
+    final difference = now.difference(dateTime);
     
     if (difference.inDays > 0) {
       return '${difference.inDays} days ago';
@@ -535,5 +580,22 @@ class HomeScreen extends StatelessWidget {
         ),
       ],
     );
+  }
+  
+  IconData _getIconData(String iconName) {
+    switch (iconName) {
+      case 'directions_bus':
+        return Icons.directions_bus;
+      case 'directions_car':
+        return Icons.directions_car;
+      case 'bolt':
+        return Icons.bolt;
+      case 'electrical_services':
+        return Icons.electrical_services;
+      case 'directions_bike':
+        return Icons.directions_bike;
+      default:
+        return Icons.eco;
+    }
   }
 }
