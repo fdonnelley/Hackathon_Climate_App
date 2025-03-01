@@ -46,7 +46,11 @@ class _SignupScreenState extends State<SignupScreen> {
       );
       
       if (success) {
-        Get.offAllNamed(AppRoutes.getRouteName(AppRoute.home));
+        // Navigate to setup flow instead of home
+        Get.offAllNamed(
+          AppRoutes.getRouteName(AppRoute.setup),
+          arguments: {'userName': _nameController.text.trim()}
+        );
       }
     }
   }

@@ -16,9 +16,11 @@ import '../features/list/screens/list_screen.dart';
 import '../features/messages/screens/messages_screen.dart';
 import '../features/profile/screens/profile_screen.dart';
 import '../features/settings/screens/settings_screen.dart';
-import '../features/splash/splash_screen.dart';
+import '../features/setup/screens/setup_screen.dart';
+import '../features/setup/controllers/setup_controller.dart';
 import '../features/social/screens/leaderboard_screen.dart';
 import '../features/social/screens/friends_screen.dart';
+import '../features/splash/splash_screen.dart';
 
 enum AppRoute {
   splash,
@@ -35,6 +37,7 @@ enum AppRoute {
   chatbot,
   leaderboard,
   friends,
+  setup,
 }
 
 /// Helper class to convert app routes to proper route strings
@@ -286,6 +289,25 @@ class AppRoutes {
             AuthMiddleware(),
           ],
         ),
+        GetPage(
+          name: getRouteName(AppRoute.setup),
+          page: () => SetupScreen(),
+          customTransition: GetPageCustomTransition(
+            transitionBuilder: (context, animation, secondaryAnimation, child) {
+              return AppAnimations.pureSlideTransition(
+                context: context,
+                animation: animation,
+                secondaryAnimation: secondaryAnimation,
+                child: child,
+                direction: SlideDirection.right,
+              );
+            },
+          ),
+          transitionDuration: AppAnimations.medium,
+          binding: BindingsBuilder(() {
+            Get.lazyPut<SetupController>(() => SetupController());
+          }),
+        ),
       ];
 
   /// Get the route name for a given AppRoute
@@ -319,6 +341,8 @@ class AppRoutes {
         return '/leaderboard';
       case AppRoute.friends:
         return '/friends';
+      case AppRoute.setup:
+        return '/setup';
       default:
         return '/';
     }

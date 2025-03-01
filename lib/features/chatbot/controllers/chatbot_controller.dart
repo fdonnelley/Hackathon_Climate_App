@@ -8,6 +8,7 @@ import '../services/groq_chat_service.dart';
 import '../../home/controllers/home_controller.dart';
 import '../../carbon_tracker/models/carbon_budget_model.dart';
 import '../../carbon_tracker/models/trip_model.dart';
+import '../../carbon_tracker/models/usage_category_model.dart';
 
 /// Controller for chatbot functionality
 class ChatbotController extends GetxController {
@@ -110,19 +111,58 @@ class ChatbotController extends GetxController {
       String activitySummary = '';
       
       if (activities.isNotEmpty) {
-        // Group by type
-        final Map<String, double> typeEmissions = {};
+        // Group by category and subcategory
+        final Map<String, Map<String?, double>> categoryEmissions = {};
         
         for (final activity in activities) {
           final type = activity['type'] as String;
+          final subType = activity['subType'] as String?;
           final emissions = activity['emissions'] as double;
           
-          typeEmissions[type] = (typeEmissions[type] ?? 0) + emissions;
+          // Initialize category if not exists
+          if (!categoryEmissions.containsKey(type)) {
+            categoryEmissions[type] = {};
+          }
+          
+          // Add emissions to the appropriate category/subcategory
+          categoryEmissions[type]![subType] = 
+              (categoryEmissions[type]![subType] ?? 0) + emissions;
         }
         
         // Convert to summary
-        typeEmissions.forEach((type, emissions) {
-          activitySummary += '$type: ${emissions.toStringAsFixed(1)} kg CO2, ';
+        categoryEmissions.forEach((category, subCategories) {
+          // For transportation, just show the total
+          if (category == 'transportation') {
+            final total = subCategories.values.fold<double>(0, (sum, val) => sum + val);
+            activitySummary += '$category: ${total.toStringAsFixed(1)} kg CO2, ';
+          } 
+          // For energy, break down by electricity/gas
+          else if (category == 'energy') {
+            // Total for the category
+            final total = subCategories.values.fold<double>(0, (sum, val) => sum + val);
+            activitySummary += '$category: ${total.toStringAsFixed(1)} kg CO2 (';
+            
+            // Add subcategories
+            subCategories.forEach((subType, emissions) {
+              if (subType != null) {
+                activitySummary += '$subType: ${emissions.toStringAsFixed(1)} kg, ';
+              } else {
+                activitySummary += 'other: ${emissions.toStringAsFixed(1)} kg, ';
+              }
+            });
+            
+            // Replace last comma with closing parenthesis
+            if (activitySummary.endsWith(', ')) {
+              activitySummary = activitySummary.substring(0, activitySummary.length - 2) + '), ';
+            } else {
+              activitySummary += '), ';
+            }
+          }
+          // Any other categories
+          else {
+            final total = subCategories.values.fold<double>(0, (sum, val) => sum + val);
+            activitySummary += '$category: ${total.toStringAsFixed(1)} kg CO2, ';
+          }
         });
         
         // Remove trailing comma
@@ -208,6 +248,14 @@ USER DATA (reference briefly when relevant):
 - Monthly: ${_homeController.monthlyEmissions.value}kg (${(_homeController.monthlyEmissions.value / _homeController.monthlyBudget.value * 100).toStringAsFixed(0)}% of budget)
 - Recent: ${_getRecentActivitiesText().replaceAll('\n', ' ')}
 
+USAGE CATEGORIES:
+The app tracks three main types of carbon usage:
+1. Transportation (car trips, flights, public transit, etc.)
+2. Energy - Electricity (home appliances, lighting, etc.)
+3. Energy - Gas (heating, cooking, etc.)
+
+When the user wants to add usage, guide them to specify one of these three categories.
+
 KEY REQUIREMENTS:
 1. Be extremely brief (1-3 sentences)
 2. Focus on one actionable suggestion at a time
@@ -246,10 +294,82 @@ KEY REQUIREMENTS:
       return "No recent activities recorded.";
     }
     
-    final buffer = StringBuffer();
+    final Map<String, Map<String?, List<Map<String, dynamic>>>> categorizedActivities = {};
+    
+    // Group activities by category and subcategory
     for (final activity in _homeController.recentActivities) {
-      buffer.writeln("- ${activity['title']}: ${activity['emissions']} kg CO2");
+      final type = activity['type'] as String;
+      final subType = activity['subType'] as String?;
+      
+      // Initialize category if not exists
+      if (!categorizedActivities.containsKey(type)) {
+        categorizedActivities[type] = {};
+      }
+      
+      // Initialize subcategory if not exists
+      if (!categorizedActivities[type]!.containsKey(subType)) {
+        categorizedActivities[type]![subType] = [];
+      }
+      
+      // Add activity to the appropriate category/subcategory
+      categorizedActivities[type]![subType]!.add(activity);
     }
+    
+    final buffer = StringBuffer();
+    
+    // Transportation activities
+    if (categorizedActivities.containsKey('transportation')) {
+      buffer.writeln("Transportation Activities:");
+      final transportActivities = categorizedActivities['transportation']?[null] ?? [];
+      for (final activity in transportActivities) {
+        buffer.writeln("- ${activity['title']}: ${activity['emissions']} kg CO2");
+      }
+      buffer.writeln();
+    }
+    
+    // Energy activities (electricity + gas)
+    if (categorizedActivities.containsKey('energy')) {
+      buffer.writeln("Energy Usage:");
+      
+      // Electricity
+      if (categorizedActivities['energy']!.containsKey('electricity')) {
+        buffer.writeln("  Electricity:");
+        for (final activity in categorizedActivities['energy']!['electricity']!) {
+          buffer.writeln("  - ${activity['title']}: ${activity['emissions']} kg CO2");
+        }
+      }
+      
+      // Gas
+      if (categorizedActivities['energy']!.containsKey('gas')) {
+        buffer.writeln("  Gas:");
+        for (final activity in categorizedActivities['energy']!['gas']!) {
+          buffer.writeln("  - ${activity['title']}: ${activity['emissions']} kg CO2");
+        }
+      }
+      
+      // Other energy
+      if (categorizedActivities['energy']!.containsKey(null)) {
+        buffer.writeln("  Other Energy:");
+        for (final activity in categorizedActivities['energy']![null]!) {
+          buffer.writeln("  - ${activity['title']}: ${activity['emissions']} kg CO2");
+        }
+      }
+      
+      buffer.writeln();
+    }
+    
+    // Any other categories
+    categorizedActivities.forEach((category, subcategories) {
+      if (category != 'transportation' && category != 'energy') {
+        buffer.writeln("$category Activities:");
+        subcategories.forEach((subcategory, activities) {
+          for (final activity in activities) {
+            buffer.writeln("- ${activity['title']}: ${activity['emissions']} kg CO2");
+          }
+        });
+        buffer.writeln();
+      }
+    });
     
     return buffer.toString();
   }
