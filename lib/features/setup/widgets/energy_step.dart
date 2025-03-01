@@ -34,6 +34,44 @@ class EnergyStep extends StatelessWidget {
             style: Theme.of(context).textTheme.bodyLarge,
           ),
           
+          const SizedBox(height: 16.0),
+          
+          // Average values information
+          Container(
+            padding: const EdgeInsets.all(12.0),
+            decoration: BoxDecoration(
+              color: Colors.green.withOpacity(0.1),
+              borderRadius: BorderRadius.circular(8.0),
+              border: Border.all(
+                color: Colors.green.withOpacity(0.3),
+                width: 1.0,
+              ),
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    Icon(Icons.info_outline, color: Colors.green[700], size: 18),
+                    const SizedBox(width: 8.0),
+                    Text(
+                      'Average Utility Bills',
+                      style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                        fontWeight: FontWeight.bold,
+                        color: Colors.green[700],
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 8.0),
+                Text(
+                  controller.getAverageUtilityBillsText(),
+                  style: Theme.of(context).textTheme.bodySmall,
+                ),
+              ],
+            ),
+          ),
+          
           const SizedBox(height: 32.0),
           
           // Electricity bill section
@@ -61,7 +99,7 @@ class EnergyStep extends StatelessWidget {
           // Information card - now collapsible
           CollapsibleInfoCard(
             title: 'Why we need this information',
-            content: 'Home energy use is typically responsible for 25-30% of a household\'s carbon footprint. By knowing your energy costs, we can estimate your emissions and suggest effective reduction strategies.\n\nIf you don\'t know the exact amounts, enter your best estimate or leave blank to skip.',
+            content: 'Home energy use is typically responsible for 25-30% of a household\'s carbon footprint. By knowing your energy costs, we can estimate your emissions and suggest effective reduction strategies.\n\nIf you don\'t know the exact amounts, enter your best estimate or leave blank to use average values.',
           ),
         ],
       ),
@@ -201,22 +239,25 @@ class _CollapsibleInfoCardState extends State<CollapsibleInfoCard> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                // Header with icon and title
                 Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    Icon(
-                      Icons.info_outline,
-                      color: Colors.blue[700],
-                    ),
-                    const SizedBox(width: 8.0),
-                    Expanded(
-                      child: Text(
-                        widget.title,
-                        style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                          fontWeight: FontWeight.bold,
+                    Row(
+                      children: [
+                        Icon(
+                          Icons.info_outline,
                           color: Colors.blue[700],
+                          size: 20.0,
                         ),
-                      ),
+                        const SizedBox(width: 8.0),
+                        Text(
+                          widget.title,
+                          style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                            color: Colors.blue[700],
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                      ],
                     ),
                     Icon(
                       _isExpanded ? Icons.keyboard_arrow_up : Icons.keyboard_arrow_down,
@@ -224,22 +265,13 @@ class _CollapsibleInfoCardState extends State<CollapsibleInfoCard> {
                     ),
                   ],
                 ),
-                
-                // Content that can be collapsed
-                AnimatedCrossFade(
-                  firstChild: const SizedBox(height: 0),
-                  secondChild: Padding(
-                    padding: const EdgeInsets.only(top: 8.0),
-                    child: Text(
-                      widget.content,
-                      style: Theme.of(context).textTheme.bodyMedium,
-                    ),
+                if (_isExpanded) ...[
+                  const SizedBox(height: 12.0),
+                  Text(
+                    widget.content,
+                    style: Theme.of(context).textTheme.bodyMedium,
                   ),
-                  crossFadeState: _isExpanded 
-                      ? CrossFadeState.showSecond 
-                      : CrossFadeState.showFirst,
-                  duration: const Duration(milliseconds: 300),
-                ),
+                ],
               ],
             ),
           ),

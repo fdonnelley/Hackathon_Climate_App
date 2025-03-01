@@ -10,11 +10,11 @@ class SetupDataModel {
   final double monthlyElectricBill; // in currency units
   final double monthlyGasBill; // in currency units
   
-  // Transportation methods
-  final List<TransportationMethod> transportationMethods;
+  // Transportation methods - Not final so it can be updated
+  List<TransportationMethod> transportationMethods;
   
-  // Calculated carbon footprint
-  final double calculatedCarbonFootprint; // in kg CO2 per month
+  // Calculated carbon footprint - Not final so it can be updated
+  double calculatedCarbonFootprint; // in kg CO2 per month
   
   // Selected goal level
   final CarbonGoalLevel selectedGoalLevel;
@@ -125,12 +125,12 @@ class TransportationMethod {
           effectiveMpg *= carpoolSize!.toDouble();
         }
         
-        // kg CO2 per gallon of gasoline is 8.89 kg
-        return (milesPerWeek / effectiveMpg) * 8.89;
+        // lbs CO2 per gallon of gasoline is 19.16 lbs CO2
+        return (milesPerWeek / effectiveMpg) * 19.16;
       
       case TransportMode.airplane:
-        // Airplanes emit about 0.25 kg CO2 per passenger-mile
-        return milesPerWeek * 0.25;
+        // Airplanes emit about 0.2 lbs CO2 per passenger-mile
+        return milesPerWeek * 0.2;
     }
   }
 }
@@ -220,7 +220,7 @@ extension CarTypeExt on CarType {
       case CarType.hybrid:
         return 35.0;
       case CarType.electric:
-        return 100.0; // Electric cars do not use gasoline
+        return 0.0; // Electric cars do not use gasoline
     }
   }
   
@@ -240,7 +240,7 @@ extension CarTypeExt on CarType {
   }
 }
 
-/// Carbon goal levels with reduction percentages
+/// Enum for carbon reduction goal levels
 enum CarbonGoalLevel {
   minimal,    // 10% reduction
   moderate,   // 25% reduction
@@ -259,7 +259,7 @@ extension CarbonGoalLevelExt on CarbonGoalLevel {
         return 'Climate Saver';
     }
   }
-  
+
   String get description {
     switch (this) {
       case CarbonGoalLevel.minimal:
@@ -270,21 +270,29 @@ extension CarbonGoalLevelExt on CarbonGoalLevel {
         return 'Maximum impact to help save the planet (50% reduction)';
     }
   }
-  
+
   double get reductionPercentage {
     switch (this) {
       case CarbonGoalLevel.minimal:
-        return 0.10; // 10%
+        return 0.1;
       case CarbonGoalLevel.moderate:
-        return 0.25; // 25%
+        return 0.25;
       case CarbonGoalLevel.climateSaver:
-        return 0.50; // 50%
+        return 0.5;
     }
   }
-  
-  // Weekly carbon budget in kg for an average person (before reduction)
-  double get baseWeeklyBudget => 120.0; 
-  
-  // Calculate the weekly budget goal based on reduction target
-  double get weeklyBudgetGoal => baseWeeklyBudget * (1 - reductionPercentage);
+
+  double get weeklyBudgetGoal {
+    // Get average weekly carbon budget
+    double averageWeekly = 40.0; // Average weekly emissions in kg CO2
+    
+    switch (this) {
+      case CarbonGoalLevel.minimal:
+        return averageWeekly * 0.9; // 10% reduction
+      case CarbonGoalLevel.moderate:
+        return averageWeekly * 0.75; // 25% reduction
+      case CarbonGoalLevel.climateSaver:
+        return averageWeekly * 0.5; // 50% reduction
+    }
+  }
 }

@@ -154,7 +154,7 @@ class GoalSelectionStep extends StatelessWidget {
     required double carbonFootprint,
   }) {
     // Calculate the target based on reduction percentage
-    final targetBudget = carbonFootprint * (1 - level.reductionPercentage) / 4.33;
+    final targetBudget = carbonFootprint * (1 - level.reductionPercentage);
     
     return GestureDetector(
       onTap: onTap,

@@ -227,7 +227,7 @@ class TransportationStep extends StatelessWidget {
                       const SizedBox(height: 16.0),
                       
                       Text(
-                        'Public transportation has zero emissions in our calculation model',
+                        'Public transportation emissions are calculated based on passenger miles',
                         style: Theme.of(context).textTheme.bodySmall?.copyWith(
                           fontStyle: FontStyle.italic,
                           color: Colors.green.shade700,
@@ -242,9 +242,9 @@ class TransportationStep extends StatelessWidget {
                 // Miles per week input
                 TextField(
                   controller: controller.mileageController,
-                  decoration: const InputDecoration(
+                  decoration: InputDecoration(
                     labelText: 'Miles Per Week',
-                    hintText: 'Enter distance',
+                    hintText: controller.averageMileage.toStringAsFixed(0),
                     suffixText: 'miles',
                     border: OutlineInputBorder(),
                   ),
@@ -252,6 +252,15 @@ class TransportationStep extends StatelessWidget {
                   inputFormatters: [
                     FilteringTextInputFormatter.digitsOnly,
                   ],
+                ),
+                
+                const SizedBox(height: 8.0),
+                
+                Text(
+                  'Average weekly mileage is ${controller.averageMileage.toStringAsFixed(0)} miles',
+                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                    fontStyle: FontStyle.italic,
+                  ),
                 ),
                 
                 const SizedBox(height: 16.0),
@@ -263,9 +272,9 @@ class TransportationStep extends StatelessWidget {
                     children: [
                       TextField(
                         controller: controller.mpgController,
-                        decoration: const InputDecoration(
+                        decoration: InputDecoration(
                           labelText: 'Miles Per Gallon (MPG)',
-                          hintText: 'Enter vehicle fuel efficiency',
+                          hintText: controller.selectedCarType.value.defaultMpg.toStringAsFixed(0),
                           suffixText: 'MPG',
                           border: OutlineInputBorder(),
                         ),

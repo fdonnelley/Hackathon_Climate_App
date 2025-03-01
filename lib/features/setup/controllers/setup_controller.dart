@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 
 import '../models/setup_data_model.dart';
 import '../../carbon_tracker/models/usage_category_model.dart' as carbon_tracker;
+import '../../carbon_tracker/services/carbon_calculator_service.dart';
 import '../../home/controllers/home_controller.dart';
 import '../../../routes/app_routes.dart';
 
@@ -38,14 +39,28 @@ class SetupController extends GetxController {
   // Number of people in carpool (for carpool car usage)
   final carpoolSize = 2.obs;
   
-  // Observable loading state
-  final isCalculating = false.obs;
+  // Average transportation mileage per week value
+  final double averageMileage = 200.0;
+
+  // Selected goal level for carbon reduction
+  final Rx<CarbonGoalLevel> selectedGoalLevel = CarbonGoalLevel.moderate.obs;
   
-  // Observable goal selection
-  final selectedGoalLevel = CarbonGoalLevel.moderate.obs;
+  // Flag to track calculation in progress
+  final RxBool isCalculating = false.obs;
   
   // Reference to home controller
   late final HomeController _homeController;
+  
+  // Average values for user reference
+  final averageElectricBill = 120.0; // Average monthly electric bill in $
+  final averageGasBill = 80.0; // Average monthly gas bill in $
+  final averageMpg = {
+    CarType.sedan: 25.0,
+    CarType.suv: 20.0,
+    CarType.truck: 18.0,
+    CarType.hybrid: 45.0,
+    CarType.electric: 100.0, // Equivalent MPG for electric
+  };
   
   @override
   void onInit() {
@@ -206,40 +221,88 @@ class SetupController extends GetxController {
   void calculateCarbonFootprint() {
     isCalculating.value = true;
     
-    // Calculate transportation emissions (weekly)
-    double transportationEmissions = 0;
-    for (var method in transportationMethods) {
-      transportationEmissions += method.calculateWeeklyEmissions();
-    }
-    
-    // Convert to monthly (multiply by ~4.33 weeks per month)
-    transportationEmissions *= 4.33;
-    
-    // Calculate energy emissions
-    // Average electricity emissions: 0.48 kg CO2 per kWh
-    // Average residential price: $0.15 per kWh
-    double electricityEmissions = setupData.value.monthlyElectricBill / 0.15 * 0.48;
-    
-    // Average natural gas emissions: 5.5 kg CO2 per therm
-    // Average residential price: $1.5 per therm
-    double gasEmissions = setupData.value.monthlyGasBill / 1.5 * 5.5;
-    
-    // Total monthly carbon footprint
-    double totalEmissions = transportationEmissions + electricityEmissions + gasEmissions;
-    
-    // Update the model
-    setupData.value = setupData.value.copyWith(
-      calculatedCarbonFootprint: totalEmissions,
-    );
-    
-    isCalculating.value = false;
+    // Short delay to show loading indicator
+    Future.delayed(const Duration(milliseconds: 500), () {
+      // Update the setupData with current transportation methods
+      setupData.update((data) {
+        if (data != null) {
+          data.transportationMethods = List.from(transportationMethods);
+        }
+      });
+      
+      // Use the calculator service to calculate total emissions
+      double totalEmissions = CarbonCalculatorService.calculateTotalFootprint(setupData.value);
+      
+      // Update the setupData with calculated value
+      setupData.update((data) {
+        if (data != null) {
+          data.calculatedCarbonFootprint = totalEmissions;
+        }
+      });
+      
+      // Set a default goal level based on current emissions
+      _setDefaultGoalLevel(totalEmissions);
+      
+      isCalculating.value = false;
+    });
   }
   
+  // Set a default goal level based on current emissions
+  void _setDefaultGoalLevel(double totalEmissions) {
+    double averageFootprint = CarbonCalculatorService.calculateAverageFootprint();
+    
+    if (totalEmissions > averageFootprint * 1.3) {
+      // If emissions are much higher than average, suggest a more ambitious goal
+      selectedGoalLevel.value = CarbonGoalLevel.climateSaver;
+    } else if (totalEmissions > averageFootprint) {
+      // If emissions are higher than average, suggest a moderate goal
+      selectedGoalLevel.value = CarbonGoalLevel.moderate;
+    } else {
+      // If emissions are already below average, suggest a minimal goal
+      selectedGoalLevel.value = CarbonGoalLevel.minimal;
+    }
+  }
+
+  // Get average utility bills as a string for display
+  String getAverageUtilityBillsText() {
+    return 'Average electric bill: \$${averageElectricBill.toStringAsFixed(0)}/month\n'
+           'Average gas bill: \$${averageGasBill.toStringAsFixed(0)}/month';
+  }
+
+  // Get average transportation info text for displaying in the UI
+  String getAverageTransportationText() {
+    return '''
+• Average American drives about 200 miles per week
+• Sedans average 25 MPG, SUVs average 20 MPG, trucks average 18 MPG
+• Electric vehicles produce zero direct emissions
+• Public transportation averages 0.25 kg CO₂/mile (much lower than cars)
+• Walking and biking produce zero emissions
+''';
+  }
+
+  // Calculate electricity emissions from the SetupDataModel
+  double calculateElectricityEmissions() {
+    return CarbonCalculatorService.calculateElectricityEmissions(
+        setupData.value.monthlyElectricBill ?? 0);
+  }
+
+  // Calculate gas emissions from the SetupDataModel
+  double calculateGasEmissions() {
+    return CarbonCalculatorService.calculateGasEmissions(
+        setupData.value.monthlyGasBill ?? 0);
+  }
+
+  // Calculate transportation emissions from the SetupDataModel
+  double calculateTransportationEmissions() {
+    return CarbonCalculatorService.calculateTransportationEmissions(
+        setupData.value.transportationMethods);
+  }
+
   // Apply the setup data to the home controller
   void _applySetupDataToHomeController() {
     final setupDataValue = setupData.value;
-    final currentFootprint = setupDataValue.estimateFootprint();
-    final targetFootprint = setupDataValue.selectedGoalLevel.weeklyBudgetGoal;
+    // final currentFootprint = setupDataValue.estimateFootprint();
+    // final targetFootprint = setupDataValue.selectedGoalLevel.weeklyBudgetGoal;
     
     _homeController.setUserData(
       name: setupDataValue.userName,
