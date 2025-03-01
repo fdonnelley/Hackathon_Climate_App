@@ -58,6 +58,28 @@ class SetupDataModel {
       selectedGoalLevel: selectedGoalLevel ?? this.selectedGoalLevel,
     );
   }
+  
+  /// Estimate weekly carbon footprint based on transportation and energy usage
+  double estimateFootprint() {
+    // Start with the stored carbon footprint (monthly) and convert to weekly
+    double weekly = calculatedCarbonFootprint / 4.33; // Convert monthly to weekly
+    
+    // If we have transportation methods, use those for more accurate calculation
+    if (transportationMethods.isNotEmpty) {
+      double transportEmissions = 0.0;
+      
+      // Sum up emissions from all transportation methods
+      for (var transport in transportationMethods) {
+        transportEmissions += transport.calculateWeeklyEmissions();
+      }
+      
+      // Add transportation emissions to the total
+      weekly = transportEmissions;
+    }
+    
+    // Return the weekly estimate
+    return weekly;
+  }
 }
 
 /// Represents a transportation method with usage details
@@ -259,4 +281,10 @@ extension CarbonGoalLevelExt on CarbonGoalLevel {
         return 0.50; // 50%
     }
   }
+  
+  // Weekly carbon budget in kg for an average person (before reduction)
+  double get baseWeeklyBudget => 120.0; 
+  
+  // Calculate the weekly budget goal based on reduction target
+  double get weeklyBudgetGoal => baseWeeklyBudget * (1 - reductionPercentage);
 }

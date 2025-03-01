@@ -105,7 +105,7 @@ class TransportationStep extends StatelessWidget {
                         runSpacing: 8.0,
                         children: CarType.values.map((type) {
                           return Obx(() => ChoiceChip(
-                            label: Text(_getDisplayName(type)),
+                            label: Text(type.displayName),
                             selected: controller.selectedCarType.value == type,
                             onSelected: (selected) {
                               if (selected) {
@@ -278,7 +278,7 @@ class TransportationStep extends StatelessWidget {
                       const SizedBox(height: 8.0),
                       
                       Obx(() => Text(
-                        'If you don\'t know your MPG, leave blank for ${_getDisplayName(controller.selectedCarType.value)} average (${controller.selectedCarType.value.defaultMpg.toStringAsFixed(0)} MPG)',
+                        'If you don\'t know your MPG, leave blank for ${controller.selectedCarType.value.displayName} average (${controller.selectedCarType.value.defaultMpg.toStringAsFixed(0)} MPG)',
                         style: Theme.of(context).textTheme.bodySmall?.copyWith(
                           fontStyle: FontStyle.italic,
                         ),
@@ -297,16 +297,24 @@ class TransportationStep extends StatelessWidget {
                            controller.selectedCarType.value == CarType.electric),
                   child: Padding(
                     padding: const EdgeInsets.only(bottom: 16.0),
-                    child: Row(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Icon(Icons.eco, color: Colors.green.shade700),
-                        const SizedBox(width: 8.0),
-                        Text(
-                          'Zero emissions mode of transportation!',
-                          style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                            color: Colors.green.shade700,
-                            fontWeight: FontWeight.bold,
-                          ),
+                        Row(
+                          children: [
+                            Icon(Icons.eco, color: Colors.green.shade700),
+                            const SizedBox(width: 8.0),
+                            Expanded(
+                              child: Text(
+                                'Zero emissions mode of transportation!',
+                                style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                                  color: Colors.green.shade700,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                                overflow: TextOverflow.visible,
+                              ),
+                            ),
+                          ],
                         ),
                       ],
                     ),
@@ -399,19 +407,22 @@ class TransportationStep extends StatelessWidget {
           children: [
             Text('${method.milesPerWeek.toStringAsFixed(0)} miles per week'),
             if (method.mode == TransportMode.car && method.carType != null && method.carType != CarType.electric)
-              Text('${_getDisplayName(method.carType!)} - ${method.mpg?.toStringAsFixed(0) ?? method.carType!.defaultMpg.toStringAsFixed(0)} MPG'),
+              Text('${method.carType!.displayName} - ${method.mpg?.toStringAsFixed(0) ?? method.carType!.defaultMpg.toStringAsFixed(0)} MPG'),
             if (method.mode == TransportMode.car && method.carUsageType == CarUsageType.carpool && method.carpoolSize != null)
               Text('Carpool with ${method.carpoolSize} people'),
             if (method.mode == TransportMode.publicTransportation && method.publicTransportType != null)
-              Text(_getDisplayName(method.publicTransportType!)),
+              Text(method.publicTransportType!.displayName),
             if (method.calculateWeeklyEmissions() > 0)
               Text(
                 '${method.calculateWeeklyEmissions().toStringAsFixed(1)} kg CO₂ per week',
                 style: TextStyle(color: _getEmissionColor(method.calculateWeeklyEmissions())),
               )
             else
-              const Text('0 kg CO₂ emissions (Zero emission mode)', 
-                style: TextStyle(color: Colors.green, fontWeight: FontWeight.bold)),
+              Text(
+                '0 kg CO₂ emissions (Zero emission mode)', 
+                style: const TextStyle(color: Colors.green, fontWeight: FontWeight.bold),
+                overflow: TextOverflow.visible,
+              ),
           ],
         ),
         trailing: IconButton(
@@ -450,21 +461,6 @@ class TransportationStep extends StatelessWidget {
     return Colors.red;
   }
   
-  String _getDisplayName(dynamic enumValue) {
-    if (enumValue == null) return '';
-    
-    if (enumValue is TransportMode) {
-      return enumValue.displayName;
-    } else if (enumValue is CarType) {
-      return enumValue.displayName;
-    } else if (enumValue is PublicTransportType) {
-      return enumValue.displayName;
-    }
-    
-    // Fallback for any other type
-    return enumValue.toString();
-  }
-  
   IconData _getTransportIcon(TransportMode mode) {
     switch (mode) {
       case TransportMode.walking:
@@ -474,11 +470,9 @@ class TransportationStep extends StatelessWidget {
       case TransportMode.car:
         return Icons.directions_car;
       case TransportMode.publicTransportation:
-        return Icons.directions_transit;
+        return Icons.directions_bus;
       case TransportMode.airplane:
-        return Icons.flight;
-      default:
-        return Icons.commute;
+        return Icons.airplanemode_active;
     }
   }
 }

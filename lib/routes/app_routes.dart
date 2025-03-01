@@ -10,6 +10,7 @@ import '../features/auth/screens/forgot_password_screen.dart';
 import '../features/auth/screens/login_screen.dart';
 import '../features/auth/screens/signup_screen.dart';
 import '../features/calendar/screens/calendar_screen.dart';
+import '../features/carbon_tracker/screens/usage_details_screen.dart';
 import '../features/chatbot/screens/chatbot_screen.dart';
 import '../features/home/screens/home_screen.dart';
 import '../features/list/screens/list_screen.dart';
@@ -38,6 +39,7 @@ enum AppRoute {
   leaderboard,
   friends,
   setup,
+  usageDetails,
 }
 
 /// Helper class to convert app routes to proper route strings
@@ -308,6 +310,24 @@ class AppRoutes {
             Get.lazyPut<SetupController>(() => SetupController());
           }),
         ),
+        GetPage(
+          name: getRouteName(AppRoute.usageDetails),
+          page: () => const UsageDetailsScreen(),
+          customTransition: GetPageCustomTransition(
+            transitionBuilder: (context, animation, secondaryAnimation, child) {
+              return AppAnimations.fadeScaleTransition(
+                context: context,
+                animation: animation,
+                secondaryAnimation: secondaryAnimation,
+                child: child,
+              );
+            },
+          ),
+          transitionDuration: AppAnimations.medium,
+          middlewares: [
+            AuthMiddleware(),
+          ],
+        ),
       ];
 
   /// Get the route name for a given AppRoute
@@ -343,6 +363,8 @@ class AppRoutes {
         return '/friends';
       case AppRoute.setup:
         return '/setup';
+      case AppRoute.usageDetails:
+        return '/usage-details';
       default:
         return '/';
     }

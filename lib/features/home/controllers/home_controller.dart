@@ -12,23 +12,29 @@ class HomeController extends GetxController {
   final goalLevel = Rx<CarbonGoalLevel?>(null);
   
   /// Daily carbon budget in grams
-  final dailyBudget = 5000.0.obs;
+  final dailyBudget = 0.0.obs;
   
-  /// Weekly carbon budget in kilograms
-  final weeklyBudget = 35.0.obs;
+  /// Weekly carbon budget in kilograms - the target goal
+  final weeklyBudget = 0.0.obs;
   
   /// Monthly carbon budget in kilograms
-  final monthlyBudget = 150.0.obs;
+  final monthlyBudget = 0.0.obs;
   
   /// Current daily carbon emissions in grams
-  final dailyEmissions = 2750.0.obs;
+  final dailyEmissions = 0.0.obs;
   
   /// Current weekly carbon emissions in kilograms
-  final weeklyEmissions = 19.5.obs;
+  final weeklyEmissions = 0.0.obs;
   
   /// Current monthly carbon emissions in kilograms
-  final monthlyEmissions = 84.3.obs;
+  final monthlyEmissions = 0.0.obs;
   
+  /// Percentage of weekly budget used
+  final weeklyUsagePercentage = 0.0.obs;
+  
+  /// Start date of the current tracking period
+  final trackingStartDate = DateTime.now().obs;
+
   /// List of recent activities
   final recentActivities = <Map<String, dynamic>>[
     {
@@ -76,8 +82,6 @@ class HomeController extends GetxController {
   /// Set user data from setup process
   void setUserData({
     required String name,
-    required double monthlyEmissions,
-    required double monthlyBudget,
     required CarbonGoalLevel goalLevel,
     SetupDataModel? setupData,
   }) {
@@ -85,67 +89,144 @@ class HomeController extends GetxController {
     userName.value = name;
     this.goalLevel.value = goalLevel;
     
-    // Set emissions and budgets
-    this.monthlyEmissions.value = monthlyEmissions;
-    this.monthlyBudget.value = monthlyBudget;
+    // Set emissions to zero (user is just starting)
+    weeklyEmissions.value = 0.0;
+    monthlyEmissions.value = 0.0;
+    dailyEmissions.value = 0.0;
     
-    // Calculate weekly values (divide by 4.33 weeks per month)
-    weeklyEmissions.value = monthlyEmissions / 4.33;
-    weeklyBudget.value = monthlyBudget / 4.33;
+    // Set budgets based on selected goal level
+    weeklyBudget.value = goalLevel.weeklyBudgetGoal;
     
-    // Calculate daily values (divide by 30 days per month)
-    dailyEmissions.value = (monthlyEmissions / 30) * 1000; // Convert to grams
-    dailyBudget.value = (monthlyBudget / 30) * 1000; // Convert to grams
+    // Calculate monthly budget (weekly * 4.33)
+    monthlyBudget.value = weeklyBudget.value * 4.33;
+    
+    // Calculate daily budget (weekly / 7) and convert to grams
+    dailyBudget.value = (weeklyBudget.value / 7) * 1000;
+    
+    // Set tracking start date to today
+    trackingStartDate.value = DateTime.now();
+    
+    // Reset usage percentage
+    weeklyUsagePercentage.value = 0.0;
     
     // Clear sample activities
     recentActivities.clear();
     
-    // Add initial activities based on setup data
-    if (setupData != null) {
-      _addInitialActivitiesFromSetupData(setupData);
+    // Add the transportation methods from setup as activities
+    if (setupData != null && setupData.transportationMethods.isNotEmpty) {
+      // Convert transportation methods to activities
+      for (var transport in setupData.transportationMethods) {
+        final weeklyEmissions = transport.calculateWeeklyEmissions();
+        
+        if (weeklyEmissions > 0) {
+          _addActivity(
+            type: 'transportation',
+            subType: transport.mode.displayName,
+            title: _getTransportTitle(transport),
+            emissions: weeklyEmissions / 7, // Daily emissions
+            icon: _getTransportIcon(transport.mode),
+          );
+        }
+      }
     }
   }
   
-  /// Add initial activities from setup data
-  void _addInitialActivitiesFromSetupData(SetupDataModel setupData) {
-    // Add energy activities
-    if (setupData.monthlyElectricBill > 0) {
-      addActivity(
-        title: 'Monthly Electricity',
-        description: 'Based on your monthly bill of \$${setupData.monthlyElectricBill.toStringAsFixed(2)}',
-        emissions: setupData.monthlyElectricBill / 0.15 * 0.48,
-        type: 'energy',
-        subType: 'electricity',
-      );
-    }
+  /// Add new emissions activity and update totals
+  void addEmissionsActivity({
+    required String type,
+    String? subType,
+    required String title,
+    required double emissions,
+    required String icon,
+  }) {
+    _addActivity(
+      type: type,
+      subType: subType,
+      title: title,
+      emissions: emissions,
+      icon: icon,
+    );
     
-    if (setupData.monthlyGasBill > 0) {
-      addActivity(
-        title: 'Monthly Natural Gas',
-        description: 'Based on your monthly bill of \$${setupData.monthlyGasBill.toStringAsFixed(2)}',
-        emissions: setupData.monthlyGasBill / 1.5 * 5.5,
-        type: 'energy',
-        subType: 'gas',
-      );
-    }
+    // Update total emissions
+    _updateEmissions(emissions);
+  }
+  
+  /// Helper to add an activity
+  void _addActivity({
+    required String type,
+    String? subType,
+    required String title,
+    required double emissions,
+    required String icon,
+  }) {
+    // Add to recent activities
+    recentActivities.insert(0, {
+      'type': type,
+      'subType': subType,
+      'title': title,
+      'emissions': emissions,
+      'timestamp': DateTime.now(),
+      'icon': icon,
+    });
     
-    // Add transportation activities
-    for (var method in setupData.transportationMethods) {
-      final modeName = method.mode.name;
-      final title = method.mode == carbon_tracker.TransportMode.car && method.carType != null 
-          ? '${_capitalize(method.carType!.name)} Car - ${method.milesPerWeek.toStringAsFixed(0)} miles/week'
-          : '${_capitalize(modeName)} - ${method.milesPerWeek.toStringAsFixed(0)} miles/week';
+    // Keep only the last 10 activities
+    if (recentActivities.length > 10) {
+      recentActivities.removeLast();
+    }
+  }
+  
+  /// Update emissions totals and percentages
+  void _updateEmissions(double dailyEmissionAmount) {
+    // Update daily emissions (in grams)
+    dailyEmissions.value += dailyEmissionAmount * 1000;
+    
+    // Update weekly emissions (in kg)
+    weeklyEmissions.value += dailyEmissionAmount;
+    
+    // Update monthly emissions (in kg)
+    monthlyEmissions.value += dailyEmissionAmount;
+    
+    // Calculate percentage of weekly budget used
+    weeklyUsagePercentage.value = (weeklyEmissions.value / weeklyBudget.value) * 100;
+  }
+  
+  /// Reset weekly tracking
+  void resetWeeklyTracking() {
+    weeklyEmissions.value = 0.0;
+    trackingStartDate.value = DateTime.now();
+    weeklyUsagePercentage.value = 0.0;
+  }
+  
+  /// Get icon for transport mode
+  String _getTransportIcon(TransportMode mode) {
+    switch (mode) {
+      case TransportMode.walking:
+        return 'directions_walk';
+      case TransportMode.bicycle:
+        return 'directions_bike';
+      case TransportMode.car:
+        return 'directions_car';
+      case TransportMode.publicTransportation:
+        return 'directions_bus';
+      case TransportMode.airplane:
+        return 'flight';
+    }
+  }
+  
+  /// Get descriptive title for transportation method
+  String _getTransportTitle(TransportationMethod transport) {
+    switch (transport.mode) {
+      case TransportMode.car:
+        if (transport.carUsageType != null) {
+          return '${transport.carType?.displayName ?? 'Car'} (${transport.carUsageType!.displayName})';
+        }
+        return transport.carType?.displayName ?? 'Car Trip';
       
-      final description = method.mode == carbon_tracker.TransportMode.car 
-          ? 'Vehicle with ${method.mpg?.toStringAsFixed(0) ?? method.carType?.defaultMpg.toStringAsFixed(0) ?? "25"} MPG'
-          : '${method.milesPerWeek.toStringAsFixed(0)} miles per week';
-      
-      addActivity(
-        title: title,
-        description: description,
-        emissions: method.calculateWeeklyEmissions() * 4.33, // Convert to monthly
-        type: 'transportation',
-      );
+      case TransportMode.publicTransportation:
+        return transport.publicTransportType?.displayName ?? 'Public Transit';
+        
+      default:
+        return transport.mode.displayName;
     }
   }
   
@@ -209,16 +290,6 @@ class HomeController extends GetxController {
     
     // Update emissions
     _updateEmissions(emissions);
-  }
-  
-  /// Update emissions after adding a new activity
-  void _updateEmissions(double emissions) {
-    // Update daily emissions
-    dailyEmissions.value += emissions * 1000; // Convert kg to g
-    
-    // Update weekly and monthly emissions
-    weeklyEmissions.value += emissions;
-    monthlyEmissions.value += emissions;
   }
   
   /// Get activities filtered by type

@@ -108,12 +108,11 @@ class SetupController extends GetxController {
         );
         
         // Apply setup data to home controller and complete setup
-        _applySetupDataToHomeController(setupData.value);
+        _applySetupDataToHomeController();
         
         // Navigate to home screen after completing setup
         Get.offAllNamed(AppRoutes.getRouteName(AppRoute.home));
         return; // Exit the function early since we're navigating
-        break;
     }
     
     // Move to next page
@@ -237,18 +236,17 @@ class SetupController extends GetxController {
   }
   
   // Apply the setup data to the home controller
-  void _applySetupDataToHomeController(SetupDataModel setupData) {
-    // Set monthly budget based on current footprint and goal level
-    double reductionPercentage = setupData.selectedGoalLevel.reductionPercentage;
-    double currentFootprint = setupData.calculatedCarbonFootprint;
-    double targetFootprint = currentFootprint * (1 - reductionPercentage);
+  void _applySetupDataToHomeController() {
+    final setupDataValue = setupData.value;
+    final currentFootprint = setupDataValue.estimateFootprint();
+    final targetFootprint = setupDataValue.selectedGoalLevel.weeklyBudgetGoal;
     
     _homeController.setUserData(
-      name: setupData.userName,
-      monthlyEmissions: currentFootprint,
-      monthlyBudget: targetFootprint,
-      goalLevel: setupData.selectedGoalLevel,
-      setupData: setupData,
+      name: setupDataValue.userName,
+      goalLevel: setupDataValue.selectedGoalLevel,
+      setupData: setupDataValue,
     );
+    
+    // Navigation is handled by the calling method
   }
 }

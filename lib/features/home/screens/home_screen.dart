@@ -92,119 +92,142 @@ class HomeScreen extends StatelessWidget {
               const SizedBox(height: 32),
               
               // Carbon Budget Progress Card
-              Container(
-                padding: const EdgeInsets.all(24),
-                decoration: BoxDecoration(
-                  gradient: LinearGradient(
-                    colors: [
-                      AppColors.primary,
-                      AppColors.primaryDark,
-                    ],
-                    begin: Alignment.topLeft,
-                    end: Alignment.bottomRight,
-                  ),
-                  borderRadius: BorderRadius.circular(24),
-                  boxShadow: [
-                    BoxShadow(
-                      color: AppColors.primaryDark.withOpacity(0.3),
-                      offset: const Offset(0, 4),
-                      blurRadius: 10,
+              GestureDetector(
+                onTap: () {
+                  // Navigate to usage details screen
+                  Get.toNamed(AppRoutes.getRouteName(AppRoute.usageDetails));
+                },
+                child: Container(
+                  padding: const EdgeInsets.all(24),
+                  decoration: BoxDecoration(
+                    gradient: LinearGradient(
+                      colors: [
+                        AppColors.primary,
+                        AppColors.primaryDark,
+                      ],
+                      begin: Alignment.topLeft,
+                      end: Alignment.bottomRight,
                     ),
-                  ],
-                ),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        Text(
-                          'Your Carbon Budget',
-                          style: theme.textTheme.titleLarge?.copyWith(
-                            fontWeight: FontWeight.bold,
-                            color: Colors.white,
-                          ),
-                        ),
-                        Container(
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 12,
-                            vertical: 6,
-                          ),
-                          decoration: BoxDecoration(
-                            color: Colors.white.withOpacity(0.2),
-                            borderRadius: BorderRadius.circular(16),
-                          ),
-                          child: Text(
-                            'Daily',
-                            style: theme.textTheme.bodyMedium?.copyWith(
+                    borderRadius: BorderRadius.circular(24),
+                    boxShadow: [
+                      BoxShadow(
+                        color: AppColors.primaryDark.withOpacity(0.3),
+                        offset: const Offset(0, 4),
+                        blurRadius: 10,
+                      ),
+                    ],
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Text(
+                            'Your Carbon Budget',
+                            style: theme.textTheme.titleLarge?.copyWith(
+                              fontWeight: FontWeight.bold,
                               color: Colors.white,
-                              fontWeight: FontWeight.w500,
                             ),
                           ),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 20),
-                    Obx(() {
-                      final dailyUsage = homeController.dailyEmissions.value;
-                      final dailyBudget = homeController.dailyBudget.value;
-                      final usagePercent = (dailyUsage / dailyBudget).clamp(0.0, 1.0);
-                      
-                      return Column(
-                        children: [
                           Row(
-                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
                             children: [
-                              Text(
-                                '${(usagePercent * 100).toStringAsFixed(1)}% Used',
-                                style: theme.textTheme.titleMedium?.copyWith(
-                                  color: Colors.white,
+                              Container(
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 12,
+                                  vertical: 6,
+                                ),
+                                decoration: BoxDecoration(
+                                  color: Colors.white.withOpacity(0.2),
+                                  borderRadius: BorderRadius.circular(16),
+                                ),
+                                child: Text(
+                                  'Daily',
+                                  style: theme.textTheme.bodyMedium?.copyWith(
+                                    color: Colors.white,
+                                    fontWeight: FontWeight.w500,
+                                  ),
                                 ),
                               ),
-                              Text(
-                                '${dailyUsage.toStringAsFixed(1)} / ${dailyBudget.toStringAsFixed(0)} g CO₂',
-                                style: theme.textTheme.titleMedium?.copyWith(
+                              const SizedBox(width: 8),
+                              Container(
+                                padding: const EdgeInsets.all(4),
+                                decoration: BoxDecoration(
+                                  color: Colors.white.withOpacity(0.2),
+                                  shape: BoxShape.circle,
+                                ),
+                                child: const Icon(
+                                  Icons.arrow_forward,
                                   color: Colors.white,
+                                  size: 16,
                                 ),
                               ),
                             ],
                           ),
-                          const SizedBox(height: 12),
-                          ClipRRect(
-                            borderRadius: BorderRadius.circular(8),
-                            child: LinearProgressIndicator(
-                              value: usagePercent,
-                              backgroundColor: Colors.white.withOpacity(0.2),
-                              valueColor: AlwaysStoppedAnimation<Color>(
-                                usagePercent < 0.7 
-                                    ? Colors.white 
-                                    : AppColors.warning,
-                              ),
-                              minHeight: 8,
+                        ],
+                      ),
+                      const SizedBox(height: 20),
+                      Obx(() {
+                        final dailyUsage = homeController.dailyEmissions.value;
+                        final dailyBudget = homeController.dailyBudget.value;
+                        final usagePercent = (dailyUsage / dailyBudget).clamp(0.0, 1.0);
+                        
+                        return Column(
+                          children: [
+                            Row(
+                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                              children: [
+                                Text(
+                                  '${(usagePercent * 100).toStringAsFixed(1)}% Used',
+                                  style: theme.textTheme.titleMedium?.copyWith(
+                                    color: Colors.white,
+                                  ),
+                                ),
+                                Text(
+                                  '${dailyUsage.toStringAsFixed(1)} / ${dailyBudget.toStringAsFixed(0)} g CO₂',
+                                  style: theme.textTheme.titleMedium?.copyWith(
+                                    color: Colors.white,
+                                  ),
+                                ),
+                              ],
                             ),
+                            const SizedBox(height: 12),
+                            ClipRRect(
+                              borderRadius: BorderRadius.circular(8),
+                              child: LinearProgressIndicator(
+                                value: usagePercent,
+                                backgroundColor: Colors.white.withOpacity(0.2),
+                                valueColor: AlwaysStoppedAnimation<Color>(
+                                  usagePercent < 0.7 
+                                      ? Colors.white 
+                                      : AppColors.warning,
+                                ),
+                                minHeight: 8,
+                              ),
+                            ),
+                          ],
+                        );
+                      }),
+                      const SizedBox(height: 16),
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceAround,
+                        children: [
+                          _buildCarbonStat(
+                            context,
+                            'This Week',
+                            '${homeController.weeklyEmissions.value.toStringAsFixed(1)} kg',
+                            '${(homeController.weeklyEmissions.value / homeController.weeklyBudget.value * 100).toStringAsFixed(0)}%',
+                          ),
+                          _buildCarbonStat(
+                            context,
+                            'This Month',
+                            '${homeController.monthlyEmissions.value.toStringAsFixed(1)} kg',
+                            '${(homeController.monthlyEmissions.value / homeController.monthlyBudget.value * 100).toStringAsFixed(0)}%',
                           ),
                         ],
-                      );
-                    }),
-                    const SizedBox(height: 16),
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceAround,
-                      children: [
-                        _buildCarbonStat(
-                          context,
-                          'This Week',
-                          '${homeController.weeklyEmissions.value.toStringAsFixed(1)} kg',
-                          '${(homeController.weeklyEmissions.value / homeController.weeklyBudget.value * 100).toStringAsFixed(0)}%',
-                        ),
-                        _buildCarbonStat(
-                          context,
-                          'This Month',
-                          '${homeController.monthlyEmissions.value.toStringAsFixed(1)} kg',
-                          '${(homeController.monthlyEmissions.value / homeController.monthlyBudget.value * 100).toStringAsFixed(0)}%',
-                        ),
-                      ],
-                    ),
-                  ],
+                      ),
+                    ],
+                  ),
                 ),
               ),
               
