@@ -11,6 +11,8 @@ import '../features/auth/screens/login_screen.dart';
 import '../features/auth/screens/signup_screen.dart';
 import '../features/calendar/screens/calendar_screen.dart';
 import '../features/carbon_tracker/screens/usage_details_screen.dart';
+import '../features/challenges/screens/challenges_screen.dart';
+import '../features/challenges/controllers/challenges_controller.dart';
 import '../features/chatbot/screens/chatbot_screen.dart';
 import '../features/home/screens/home_screen.dart';
 import '../features/list/screens/list_screen.dart';
@@ -40,6 +42,7 @@ enum AppRoute {
   friends,
   setup,
   usageDetails,
+  challenges,
 }
 
 /// Helper class to convert app routes to proper route strings
@@ -313,61 +316,106 @@ class AppRoutes {
         GetPage(
           name: getRouteName(AppRoute.usageDetails),
           page: () => const UsageDetailsScreen(),
-          customTransition: GetPageCustomTransition(
-            transitionBuilder: (context, animation, secondaryAnimation, child) {
-              return AppAnimations.fadeScaleTransition(
-                context: context,
-                animation: animation,
-                secondaryAnimation: secondaryAnimation,
-                child: child,
-              );
-            },
-          ),
+          transition: Transition.rightToLeft,
           transitionDuration: AppAnimations.medium,
-          middlewares: [
-            AuthMiddleware(),
-          ],
+          middlewares: [AuthMiddleware()],
+        ),
+        GetPage(
+          name: getRouteName(AppRoute.challenges),
+          page: () {
+            print('DEBUG: Building ChallengesScreen page');
+            try {
+              return const ChallengesScreen();
+            } catch (e) {
+              print('DEBUG: Error creating ChallengesScreen: $e');
+              print('DEBUG: Stack trace: ${StackTrace.current}');
+              rethrow;
+            }
+          },
+          transition: Transition.rightToLeft,
+          transitionDuration: AppAnimations.medium,
+          middlewares: [AuthMiddleware()],
+          binding: BindingsBuilder(() {
+            print('DEBUG: Registering ChallengesController binding');
+            try {
+              // Create and register the controller permanently
+              if (!Get.isRegistered<ChallengesController>()) {
+                Get.put<ChallengesController>(ChallengesController(), permanent: true);
+                print('DEBUG: ChallengesController registered permanently');
+              } else {
+                print('DEBUG: ChallengesController was already registered');
+              }
+            } catch (e) {
+              print('DEBUG: Error in ChallengesController binding: $e');
+              print('DEBUG: Stack trace: ${StackTrace.current}');
+            }
+          }),
         ),
       ];
 
-  /// Get the route name for a given AppRoute
+  /// Get the route name as a string for a given AppRoute
   static String getRouteName(AppRoute route) {
+    print('DEBUG: Getting route name for: $route');
+    String routeName;
+    
     switch (route) {
       case AppRoute.splash:
-        return '/splash';
+        routeName = '/splash';
+        break;
       case AppRoute.login:
-        return '/login';
+        routeName = '/login';
+        break;
       case AppRoute.signup:
-        return '/signup';
+        routeName = '/signup';
+        break;
       case AppRoute.forgotPassword:
-        return '/forgot-password';
+        routeName = '/forgot-password';
+        break;
       case AppRoute.home:
-        return '/home';
+        routeName = '/home';
+        break;
       case AppRoute.profile:
-        return '/profile';
+        routeName = '/profile';
+        break;
       case AppRoute.settings:
-        return '/settings';
+        routeName = '/settings';
+        break;
       case AppRoute.list:
-        return '/list';
+        routeName = '/list';
+        break;
       case AppRoute.calendar:
-        return '/calendar';
+        routeName = '/calendar';
+        break;
       case AppRoute.analytics:
-        return '/analytics';
+        routeName = '/analytics';
+        break;
       case AppRoute.messages:
-        return '/messages';
+        routeName = '/messages';
+        break;
       case AppRoute.chatbot:
-        return '/chatbot';
+        routeName = '/chatbot';
+        break;
       case AppRoute.leaderboard:
-        return '/leaderboard';
+        routeName = '/leaderboard';
+        break;
       case AppRoute.friends:
-        return '/friends';
+        routeName = '/friends';
+        break;
       case AppRoute.setup:
-        return '/setup';
+        routeName = '/setup';
+        break;
       case AppRoute.usageDetails:
-        return '/usage-details';
+        routeName = '/usage-details';
+        break;
+      case AppRoute.challenges:
+        routeName = '/challenges';
+        break;
       default:
-        return '/';
+        routeName = '/';
+        break;
     }
+    print('DEBUG: Resolved route name: $routeName');
+    return routeName;
   }
 }
 

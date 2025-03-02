@@ -66,6 +66,29 @@ class Friend {
       'status': status.name,
     };
   }
+  
+  /// Create a copy of this friend with different values
+  Friend copyWith({
+    String? id,
+    String? name,
+    String? email,
+    String? profilePicture,
+    double? reductionPercentage,
+    int? streak,
+    int? rank,
+    FriendStatus? status,
+  }) {
+    return Friend(
+      id: id ?? this.id,
+      name: name ?? this.name,
+      email: email ?? this.email,
+      profilePicture: profilePicture ?? this.profilePicture,
+      reductionPercentage: reductionPercentage ?? this.reductionPercentage,
+      streak: streak ?? this.streak,
+      rank: rank ?? this.rank,
+      status: status ?? this.status,
+    );
+  }
 }
 
 /// Enum representing the status of a friendship

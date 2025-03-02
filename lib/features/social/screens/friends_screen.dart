@@ -4,6 +4,7 @@ import '../../../core/theme/app_theme.dart';
 import '../../../routes/app_routes.dart';
 import '../controllers/social_controller.dart';
 import '../models/friend_model.dart';
+import '../../../core/widgets/debouncer.dart' as custom_debounce;
 
 /// Screen for managing friends
 class FriendsScreen extends StatelessWidget {
@@ -16,6 +17,7 @@ class FriendsScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final screenWidth = MediaQuery.of(context).size.width;
     
     // Initialize controller if not already registered
     if (!Get.isRegistered<SocialController>()) {
@@ -28,23 +30,18 @@ class FriendsScreen extends StatelessWidget {
       child: Scaffold(
         appBar: AppBar(
           title: const Text('Friends'),
-          bottom: const TabBar(
-            tabs: [
-              Tab(text: 'Friends', icon: Icon(Icons.people)),
-              Tab(text: 'Requests', icon: Icon(Icons.person_add)),
-              Tab(text: 'Find', icon: Icon(Icons.search)),
+          bottom: TabBar(
+            tabs: const [
+              Tab(text: 'Friends'),
+              Tab(text: 'Requests'),
+              Tab(text: 'Find Friends'),
             ],
           ),
         ),
         body: TabBarView(
           children: [
-            // Friends Tab
             _buildFriendsTab(theme, socialController),
-            
-            // Requests Tab
             _buildRequestsTab(theme, socialController),
-            
-            // Find Tab
             _buildFindTab(theme, socialController),
           ],
         ),
@@ -53,9 +50,9 @@ class FriendsScreen extends StatelessWidget {
   }
   
   /// Build the friends tab content
-  Widget _buildFriendsTab(ThemeData theme, SocialController controller) {
+  Widget _buildFriendsTab(ThemeData theme, SocialController socialController) {
     return Obx(() {
-      final friends = controller.friends;
+      final friends = socialController.friends;
       
       if (friends.isEmpty) {
         return Center(
@@ -101,14 +98,14 @@ class FriendsScreen extends StatelessWidget {
         itemCount: friends.length,
         itemBuilder: (context, index) {
           final friend = friends[index];
-          return _buildFriendItem(theme, friend, controller);
+          return _buildFriendItem(theme, friend, socialController);
         },
       );
     });
   }
   
   /// Build a single friend item
-  Widget _buildFriendItem(ThemeData theme, Friend friend, SocialController controller) {
+  Widget _buildFriendItem(ThemeData theme, Friend friend, SocialController socialController) {
     return ListTile(
       leading: CircleAvatar(
         backgroundImage: friend.profilePicture != null
@@ -197,7 +194,7 @@ class FriendsScreen extends StatelessWidget {
                         title: const Text('Remove Friend'),
                         onTap: () {
                           Get.back();
-                          _showRemoveFriendDialog(friend, controller);
+                          _showRemoveFriendDialog(friend, socialController);
                         },
                       ),
                     ],
@@ -215,7 +212,7 @@ class FriendsScreen extends StatelessWidget {
   }
   
   /// Show dialog to confirm friend removal
-  void _showRemoveFriendDialog(Friend friend, SocialController controller) {
+  void _showRemoveFriendDialog(Friend friend, SocialController socialController) {
     Get.dialog(
       AlertDialog(
         title: const Text('Remove Friend'),
@@ -227,7 +224,7 @@ class FriendsScreen extends StatelessWidget {
           ),
           TextButton(
             onPressed: () {
-              controller.removeFriend(friend.id);
+              socialController.removeFriend(friend.id);
               Get.back();
               Get.snackbar(
                 'Friend Removed',
@@ -243,9 +240,9 @@ class FriendsScreen extends StatelessWidget {
   }
   
   /// Build the requests tab content
-  Widget _buildRequestsTab(ThemeData theme, SocialController controller) {
+  Widget _buildRequestsTab(ThemeData theme, SocialController socialController) {
     return Obx(() {
-      final requests = controller.friendRequests;
+      final requests = socialController.friendRequests;
       
       if (requests.isEmpty) {
         return Center(
@@ -285,14 +282,14 @@ class FriendsScreen extends StatelessWidget {
         itemCount: requests.length,
         itemBuilder: (context, index) {
           final request = requests[index];
-          return _buildRequestItem(theme, request, controller);
+          return _buildRequestItem(theme, request, socialController);
         },
       );
     });
   }
   
   /// Build a friend request item
-  Widget _buildRequestItem(ThemeData theme, Friend request, SocialController controller) {
+  Widget _buildRequestItem(ThemeData theme, Friend request, SocialController socialController) {
     final isReceived = request.status == FriendStatus.received;
     
     return ListTile(
@@ -313,24 +310,24 @@ class FriendsScreen extends StatelessWidget {
               mainAxisSize: MainAxisSize.min,
               children: [
                 TextButton(
-                  onPressed: () => controller.rejectFriendRequest(request.id),
+                  onPressed: () => socialController.rejectFriendRequest(request.id),
                   child: const Text('Decline'),
                 ),
                 ElevatedButton(
-                  onPressed: () => controller.acceptFriendRequest(request.id),
+                  onPressed: () => socialController.acceptFriendRequest(request.id),
                   child: const Text('Accept'),
                 ),
               ],
             )
           : OutlinedButton(
-              onPressed: () => controller.rejectFriendRequest(request.id),
+              onPressed: () => socialController.rejectFriendRequest(request.id),
               child: const Text('Cancel'),
             ),
     );
   }
   
   /// Build the find friends tab content
-  Widget _buildFindTab(ThemeData theme, SocialController controller) {
+  Widget _buildFindTab(ThemeData theme, SocialController socialController) {
     return Padding(
       padding: const EdgeInsets.all(16.0),
       child: Column(
@@ -345,7 +342,12 @@ class FriendsScreen extends StatelessWidget {
               ),
               contentPadding: const EdgeInsets.symmetric(vertical: 16),
             ),
-            onChanged: (value) => controller.searchUsers(value),
+            onChanged: (value) {
+              // Delay search for better UX
+              custom_debounce.debounce.run(() {
+                socialController.searchUsers(value);
+              });
+            },
           ),
           
           const SizedBox(height: 16),
@@ -353,9 +355,9 @@ class FriendsScreen extends StatelessWidget {
           // Search results
           Expanded(
             child: Obx(() {
-              final results = controller.searchResults;
-              final isSearching = controller.isSearching.value;
-              final query = controller.searchQuery.value;
+              final results = socialController.searchResults;
+              final isSearching = socialController.isSearching.value;
+              final query = socialController.searchQuery.value;
               
               if (isSearching) {
                 return const Center(child: CircularProgressIndicator());
@@ -431,27 +433,29 @@ class FriendsScreen extends StatelessWidget {
                 itemCount: results.length,
                 itemBuilder: (context, index) {
                   final user = results[index];
-                  final bool requestSent = user['requestSent'] ?? false;
+                  final bool requestSent = user.status == FriendStatus.pending;
                   
                   return ListTile(
                     leading: CircleAvatar(
-                      backgroundImage: user['profilePicture'] != null
-                          ? NetworkImage(user['profilePicture'])
+                      backgroundImage: user.profilePicture != null
+                          ? NetworkImage(user.profilePicture!)
                           : null,
-                      child: user['profilePicture'] == null
-                          ? Icon(Icons.person, color: theme.colorScheme.onPrimary)
+                      child: user.profilePicture == null
+                          ? Icon(Icons.person, color: Colors.white)
                           : null,
                     ),
-                    title: Text(user['name']),
-                    subtitle: Text(user['email']),
+                    title: Text(user.name),
+                    subtitle: Text(user.email),
                     trailing: requestSent
-                        ? OutlinedButton(
+                        ? TextButton(
                             onPressed: null,
-                            child: const Text('Request Sent'),
+                            child: Text('Pending'),
                           )
                         : ElevatedButton(
-                            onPressed: () => controller.sendFriendRequest(user['id']),
-                            child: const Text('Add Friend'),
+                            onPressed: () {
+                              socialController.sendFriendRequest(user.id);
+                            },
+                            child: Text('Add'),
                           ),
                   );
                 },

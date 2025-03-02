@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
+import 'dart:math';
 import '../../../features/home/controllers/home_controller.dart';
 import 'package:fl_chart/fl_chart.dart';
 
@@ -497,7 +498,7 @@ class AnalyticsController extends GetxController {
       final type = (activity['type'] as String?)?.toLowerCase() ?? '';
       
       // Only process transportation-related activities
-      if (!type.contains('transport') && !_isTransportationCategory(activity)) {
+      if (!_isTransportationCategory(activity)) {
         continue;
       }
       
@@ -547,35 +548,73 @@ class AnalyticsController extends GetxController {
   bool _isTransportationCategory(Map<String, dynamic> activity) {
     final type = (activity['type'] as String?)?.toLowerCase() ?? '';
     final subType = (activity['subType'] as String?)?.toLowerCase() ?? '';
+    final description = (activity['description'] as String?)?.toLowerCase() ?? '';
+    final transportMode = (activity['transportMode'] as String?)?.toLowerCase() ?? '';
+    final title = (activity['title'] as String?)?.toLowerCase() ?? '';
+    
+    // Debug information
+    print('Checking if transportation: $activity');
     
     return type.contains('car') || 
            type.contains('bus') || 
            type.contains('train') || 
            type.contains('walk') || 
+           type.contains('foot') ||
+           type.contains('running') ||
            type.contains('bike') || 
            type.contains('flight') || 
            type.contains('scooter') ||
+           type.contains('transport') ||
            subType.contains('car') || 
            subType.contains('bus') || 
            subType.contains('train') || 
-           subType.contains('walk') || 
+           subType.contains('walk') ||
+           subType.contains('foot') ||
+           subType.contains('running') ||
            subType.contains('bike') || 
            subType.contains('flight') || 
-           subType.contains('scooter');
+           subType.contains('scooter') ||
+           subType.contains('transport') ||
+           description.contains('walk') ||
+           description.contains('foot') ||
+           description.contains('running') ||
+           description.contains('bike') ||
+           description.contains('car') ||
+           description.contains('drive') ||
+           description.contains('transport') ||
+           transportMode.contains('walk') ||
+           transportMode.contains('car') ||
+           transportMode.contains('drive') ||
+           transportMode.contains('bike') ||
+           transportMode.contains('train') ||
+           transportMode.contains('bus') ||
+           transportMode.contains('flight') ||
+           title.contains('walk') ||
+           title.contains('bike') ||
+           title.contains('car') ||
+           title.contains('drive') ||
+           title.contains('train') ||
+           title.contains('bus');
   }
   
   /// Determine transportation mode from activity
   String _determineTransportMode(Map<String, dynamic> activity) {
     final type = (activity['type'] as String?)?.toLowerCase() ?? '';
     final subType = (activity['subType'] as String?)?.toLowerCase() ?? '';
-    print('type: $type');
-    print('subType: $subType');
+    final description = (activity['description'] as String?)?.toLowerCase() ?? '';
+    final transportMode = (activity['transportMode'] as String?)?.toLowerCase() ?? '';
+    final title = (activity['title'] as String?)?.toLowerCase() ?? '';
+    
+    print('Determining mode for: $activity');
+    print('type: $type, subType: $subType, description: $description, transportMode: $transportMode, title: $title');
     
     // Check for specific transportation types
     if (type.contains('car') || 
         type.contains('drive') || 
         subType.contains('car') || 
-        subType.contains('drive')) {
+        subType.contains('drive') ||
+        transportMode.contains('car') ||
+        transportMode.contains('drive')) {
       return 'Car';
     }
     
@@ -588,19 +627,35 @@ class AnalyticsController extends GetxController {
         subType.contains('train') || 
         subType.contains('subway') || 
         subType.contains('public') || 
-        subType.contains('transit')) {
+        subType.contains('transit') ||
+        transportMode.contains('bus') ||
+        transportMode.contains('train') ||
+        transportMode.contains('transit')) {
       return 'Public Transit';
     }
     
     if (type.contains('walk') || 
-        subType.contains('walk')) {
+        subType.contains('walk') ||
+        description.contains('walk') ||
+        type.contains('foot') ||
+        subType.contains('foot') ||
+        description.contains('foot') ||
+        type.contains('running') ||
+        subType.contains('running') ||
+        description.contains('running') ||
+        transportMode.contains('walk') ||
+        title.contains('walk')) {
       return 'Walking';
     }
     
     if (type.contains('bike') || 
         type.contains('bicycle') || 
         subType.contains('bike') || 
-        subType.contains('bicycle')) {
+        subType.contains('bicycle') ||
+        description.contains('bike') ||
+        description.contains('bicycle') ||
+        transportMode.contains('bike') ||
+        transportMode.contains('bicycle')) {
       return 'Bicycle';
     }
     
@@ -609,7 +664,10 @@ class AnalyticsController extends GetxController {
         type.contains('air') || 
         subType.contains('flight') || 
         subType.contains('plane') || 
-        subType.contains('air')) {
+        subType.contains('air') ||
+        transportMode.contains('flight') ||
+        transportMode.contains('plane') ||
+        transportMode.contains('air')) {
       return 'Air Travel';
     }
     
@@ -619,11 +677,28 @@ class AnalyticsController extends GetxController {
   
   /// Calculate estimated miles from emissions based on transportation mode
   double _calculateMilesFromEmissions(double emissions, String mode) {
+    // Debug information
+    print('Calculating miles for mode: $mode with emissions: $emissions');
+    
     // Handle zero-emission modes specially
-    if (mode == 'Walking' || mode == 'Bicycle') {
-      // For zero-emission modes, we'll use a default value of 2 miles
-      // even if the emissions are 0
-      return 2.0;
+    if (mode == 'Walking') {
+      // For walking, use a default value based on average walking speed
+      // If we have emissions data, still use it, but ensure we return at least 1 mile
+      if (emissions > 0) {
+        return max(1.0, emissions / 0.1); // Very low emissions per mile for walking
+      } else {
+        return 2.0; // Default assumption: 2 miles of walking
+      }
+    }
+    
+    if (mode == 'Bicycle') {
+      // For bicycling, use a default value based on average cycling distance
+      // If we have emissions data, still use it, but ensure we return at least 2 miles
+      if (emissions > 0) {
+        return max(2.0, emissions / 0.1); // Very low emissions per mile for cycling
+      } else {
+        return 5.0; // Default assumption: 5 miles of cycling
+      }
     }
     
     // If emissions are 0 and it's not a zero-emission mode, return 0

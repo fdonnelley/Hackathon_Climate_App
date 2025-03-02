@@ -51,7 +51,7 @@ class LeaderboardEntry {
       reductionPercentage: (map['reductionPercentage'] as num?)?.toDouble() ?? 0.0,
       streak: (map['streak'] as num?)?.toInt() ?? 0,
       score: (map['score'] as num).toInt(),
-      isCurrentUser: currentUserId != null && currentUserId == map['userId'],
+      isCurrentUser: currentUserId != null && map['userId'] as String == currentUserId,
     );
   }
   
@@ -67,5 +67,30 @@ class LeaderboardEntry {
       'streak': streak,
       'score': score,
     };
+  }
+  
+  /// Create a copy of this entry with different values
+  LeaderboardEntry copyWith({
+    String? userId,
+    String? name,
+    String? profilePicture,
+    int? rank,
+    double? emissions,
+    double? reductionPercentage,
+    int? streak,
+    int? score,
+    bool? isCurrentUser,
+  }) {
+    return LeaderboardEntry(
+      userId: userId ?? this.userId,
+      name: name ?? this.name,
+      profilePicture: profilePicture ?? this.profilePicture,
+      rank: rank ?? this.rank,
+      emissions: emissions ?? this.emissions,
+      reductionPercentage: reductionPercentage ?? this.reductionPercentage,
+      streak: streak ?? this.streak,
+      score: score ?? this.score,
+      isCurrentUser: isCurrentUser ?? this.isCurrentUser,
+    );
   }
 }

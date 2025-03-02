@@ -25,6 +25,7 @@ import 'features/profile/screens/profile_screen.dart';
 import 'features/settings/controllers/settings_controller.dart';
 import 'features/settings/screens/settings_screen.dart';
 import 'features/splash/splash_screen.dart';
+import 'features/challenges/controllers/challenges_controller.dart';
 import 'routes/app_routes.dart';
 
 void main() async {
@@ -87,6 +88,7 @@ void _registerControllers() {
   Get.put(SettingsController(), permanent: true);
   Get.put(ListController(), permanent: true);
   Get.put(ChatbotController(), permanent: true);
+  Get.put(ChallengesController(), permanent: true);
 }
 
 /// App that displays a critical error message when initialization fails
@@ -180,6 +182,20 @@ class HackathonApp extends StatelessWidget {
       initialRoute: AppRoutes.getRouteName(AppRoute.splash),
       getPages: AppRoutes.pages,
       defaultTransition: Transition.fadeIn,
+      onGenerateRoute: (settings) {
+        print('DEBUG: onGenerateRoute called with: ${settings.name}');
+        return null; // Let GetX handle it
+      },
+      onUnknownRoute: (settings) {
+        print('DEBUG: onUnknownRoute called with: ${settings.name}');
+        return MaterialPageRoute(
+          builder: (context) => Scaffold(
+            body: Center(
+              child: Text('Route not found: ${settings.name}'),
+            ),
+          ),
+        );
+      },
     );
   }
 }

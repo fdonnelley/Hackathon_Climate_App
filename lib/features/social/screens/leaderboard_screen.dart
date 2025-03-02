@@ -71,42 +71,42 @@ class LeaderboardScreen extends StatelessWidget {
                   ],
                 ),
                 
-                const SizedBox(height: 12),
+                // const SizedBox(height: 12),
                 
-                // Time period selector
-                Row(
-                  children: [
-                    Expanded(
-                      child: Obx(() {
-                        return SegmentedButton<LeaderboardPeriod>(
-                          segments: const [
-                            ButtonSegment<LeaderboardPeriod>(
-                              value: LeaderboardPeriod.daily,
-                              label: Text('Daily'),
-                            ),
-                            ButtonSegment<LeaderboardPeriod>(
-                              value: LeaderboardPeriod.weekly,
-                              label: Text('Weekly'),
-                            ),
-                            ButtonSegment<LeaderboardPeriod>(
-                              value: LeaderboardPeriod.monthly,
-                              label: Text('Monthly'),
-                            ),
-                            ButtonSegment<LeaderboardPeriod>(
-                              value: LeaderboardPeriod.allTime,
-                              label: Text('All Time'),
-                            ),
-                          ],
-                          selected: {socialController.leaderboardPeriod.value},
-                          onSelectionChanged: (Set<LeaderboardPeriod> newSelection) {
-                            socialController.changeLeaderboardPeriod(newSelection.first);
-                          },
-                          showSelectedIcon: false,
-                        );
-                      }),
-                    ),
-                  ],
-                ),
+                // // Time period selector
+                // Row(
+                //   children: [
+                //     Expanded(
+                //       child: Obx(() {
+                //         return SegmentedButton<LeaderboardPeriod>(
+                //           segments: const [
+                //             ButtonSegment<LeaderboardPeriod>(
+                //               value: LeaderboardPeriod.daily,
+                //               label: Text('Daily'),
+                //             ),
+                //             ButtonSegment<LeaderboardPeriod>(
+                //               value: LeaderboardPeriod.weekly,
+                //               label: Text('Weekly'),
+                //             ),
+                //             ButtonSegment<LeaderboardPeriod>(
+                //               value: LeaderboardPeriod.monthly,
+                //               label: Text('Monthly'),
+                //             ),
+                //             ButtonSegment<LeaderboardPeriod>(
+                //               value: LeaderboardPeriod.allTime,
+                //               label: Text('All Time'),
+                //             ),
+                //           ],
+                //           selected: {socialController.leaderboardPeriod.value},
+                //           onSelectionChanged: (Set<LeaderboardPeriod> newSelection) {
+                //             socialController.changeLeaderboardPeriod(newSelection.first);
+                //           },
+                //           showSelectedIcon: false,
+                //         );
+                //       }),
+                //     ),
+                //   ],
+                // ),
               ],
             ),
           ),
@@ -172,14 +172,14 @@ class LeaderboardScreen extends StatelessWidget {
                           padding: EdgeInsets.symmetric(vertical: 8.0),
                           child: Divider(),
                         ),
-                        _buildLeaderboardEntry(context, currentUserEntry),
+                        _buildLeaderboardEntry(currentUserEntry, theme),
                       ],
                     );
                   }
                   
                   // Show regular entries (top 5)
                   if (index < entries.length) {
-                    return _buildLeaderboardEntry(context, entries[index]);
+                    return _buildLeaderboardEntry(entries[index], theme);
                   }
                   
                   return null;
@@ -193,19 +193,26 @@ class LeaderboardScreen extends StatelessWidget {
   }
   
   /// Build a single leaderboard entry widget
-  Widget _buildLeaderboardEntry(BuildContext context, LeaderboardEntry entry) {
-    final theme = Theme.of(context);
-    final backgroundColor = entry.isCurrentUser
-        ? theme.colorScheme.primary.withOpacity(0.1)
-        : Colors.transparent;
-    
+  Widget _buildLeaderboardEntry(LeaderboardEntry entry, ThemeData theme) {
     return Container(
-      margin: const EdgeInsets.symmetric(vertical: 4, horizontal: 16),
+      margin: const EdgeInsets.only(bottom: 8),
+      padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
       decoration: BoxDecoration(
-        color: backgroundColor,
+        color: entry.isCurrentUser 
+            ? theme.colorScheme.primaryContainer.withOpacity(0.5)
+            : theme.colorScheme.surface,
         borderRadius: BorderRadius.circular(12),
+        border: entry.isCurrentUser
+            ? Border.all(color: theme.colorScheme.primary, width: 1.5)
+            : null,
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.05),
+            blurRadius: 4,
+            offset: const Offset(0, 2),
+          ),
+        ],
       ),
-      padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 8),
       child: Row(
         children: [
           // Rank
@@ -228,14 +235,27 @@ class LeaderboardScreen extends StatelessWidget {
             flex: 3,
             child: Row(
               children: [
-                CircleAvatar(
-                  radius: 16,
-                  backgroundImage: entry.profilePicture != null
-                      ? NetworkImage(entry.profilePicture!)
-                      : null,
-                  child: entry.profilePicture == null
-                      ? Icon(Icons.person, color: theme.colorScheme.onPrimary)
-                      : null,
+                // Rank indicator instead of avatar
+                Container(
+                  width: 32,
+                  height: 32,
+                  decoration: BoxDecoration(
+                    color: entry.rank <= 3 
+                        ? _getMedalColor(entry.rank, theme).withOpacity(0.2)
+                        : theme.colorScheme.primary.withOpacity(0.1),
+                    shape: BoxShape.circle,
+                  ),
+                  child: Center(
+                    child: Text(
+                      '${entry.rank}',
+                      style: theme.textTheme.bodyMedium?.copyWith(
+                        fontWeight: FontWeight.bold,
+                        color: entry.rank <= 3 
+                            ? _getMedalColor(entry.rank, theme)
+                            : theme.colorScheme.primary,
+                      ),
+                    ),
+                  ),
                 ),
                 const SizedBox(width: 12),
                 Expanded(
@@ -247,40 +267,29 @@ class LeaderboardScreen extends StatelessWidget {
                     overflow: TextOverflow.ellipsis,
                   ),
                 ),
+                if (entry.rank <= 3)
+                  Padding(
+                    padding: const EdgeInsets.only(left: 4),
+                    child: Icon(
+                      Icons.emoji_events,
+                      color: _getMedalColor(entry.rank, theme),
+                      size: 16,
+                    ),
+                  ),
               ],
             ),
           ),
           
-          // Carbon emissions
+          // Emissions
           Expanded(
             flex: 2,
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Text(
-                  '${entry.emissions.toStringAsFixed(1)} kg',
-                  style: theme.textTheme.bodyMedium,
-                  textAlign: TextAlign.center,
-                ),
-                const SizedBox(height: 4),
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Icon(
-                      Icons.trending_down,
-                      color: AppColors.success,
-                      size: 16,
-                    ),
-                    Text(
-                      ' ${entry.reductionPercentage.toStringAsFixed(1)}%',
-                      style: theme.textTheme.bodySmall?.copyWith(
-                        color: AppColors.success,
-                      ),
-                    ),
-                  ],
-                ),
-              ],
+            child: Text(
+              '${entry.emissions.toStringAsFixed(1)} lbs',
+              style: theme.textTheme.bodyMedium?.copyWith(
+                color: theme.colorScheme.secondary,
+                fontWeight: FontWeight.w500,
+              ),
+              textAlign: TextAlign.center,
             ),
           ),
           
@@ -297,7 +306,7 @@ class LeaderboardScreen extends StatelessWidget {
                 ),
                 const SizedBox(width: 4),
                 Text(
-                  '${entry.streak} days',
+                  '1 day',
                   style: theme.textTheme.bodyMedium,
                 ),
               ],
@@ -310,17 +319,17 @@ class LeaderboardScreen extends StatelessWidget {
     );
   }
   
-  /// Get the medal color based on rank
+  /// Returns the appropriate medal color based on rank
   Color _getMedalColor(int rank, ThemeData theme) {
     switch (rank) {
       case 1:
-        return Colors.amber;
+        return Colors.amber; // Gold
       case 2:
-        return Colors.grey.shade400;
+        return Colors.grey.shade400; // Silver
       case 3:
-        return Colors.brown.shade300;
+        return Colors.brown.shade300; // Bronze
       default:
-        return theme.colorScheme.onSurface;
+        return theme.colorScheme.primary;
     }
   }
 }

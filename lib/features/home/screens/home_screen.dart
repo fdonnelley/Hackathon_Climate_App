@@ -7,6 +7,8 @@ import '../../../routes/app_routes.dart';
 import '../../../shared/widgets/app_button.dart';
 import '../../auth/controllers/auth_controller.dart';
 import '../../carbon_tracker/widgets/add_usage_bottom_sheet.dart';
+import '../../challenges/controllers/challenges_controller.dart';
+import '../../challenges/screens/challenges_screen.dart';
 import '../../chatbot/controllers/chatbot_controller.dart';
 import '../controllers/home_controller.dart';
 import '../widgets/feature_card.dart';
@@ -330,11 +332,45 @@ class HomeScreen extends StatelessWidget {
                     },
                   ),
                   FeatureCard(
-                    title: 'Badges',
-                    icon: Icons.workspace_premium,
-                    color: Colors.amber,
+                    title: 'Challenges',
+                    description: 'Earn badges & rewards',
+                    icon: Icons.emoji_events,
+                    color: AppColors.accent,
                     onTap: () {
-                      // Navigate to badges
+                      try {
+                        // First ensure the controller is ready
+                        try {
+                          // Create controller first if it doesn't exist
+                          if (!Get.isRegistered<ChallengesController>()) {
+                            print('DEBUG: Pre-initializing ChallengesController');
+                            Get.put(ChallengesController(), permanent: true);
+                          }
+                        } catch (e) {
+                          print('DEBUG: Error pre-initializing controller: $e');
+                        }
+                        
+                        // Then navigate using named route
+                        print('DEBUG: Navigating to challenges screen via named route');
+                        Get.toNamed(AppRoutes.getRouteName(AppRoute.challenges));
+                      } catch (e) {
+                        print('DEBUG: Error in challenges navigation: $e');
+                        print('DEBUG: Stack trace: ${StackTrace.current}');
+                        
+                        // Recovery attempt - try direct navigation
+                        try {
+                          print('DEBUG: Attempting recovery with direct navigation');
+                          
+                          // Create controller first if it doesn't exist
+                          if (!Get.isRegistered<ChallengesController>()) {
+                            print('DEBUG: Pre-initializing ChallengesController for direct navigation');
+                            Get.put(ChallengesController(), permanent: true);
+                          }
+                          
+                          Get.to(() => const ChallengesScreen());
+                        } catch (e2) {
+                          print('DEBUG: Recovery failed: $e2');
+                        }
+                      }
                     },
                   ),
                 ],
@@ -343,32 +379,32 @@ class HomeScreen extends StatelessWidget {
               const SizedBox(height: 32),
               
               // Game Features
-              Text(
-                'Gamification',
-                style: theme.textTheme.titleLarge?.copyWith(
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-              const SizedBox(height: 16),
-              GridView.count(
-                crossAxisCount: 2,
-                childAspectRatio: 1.7,
-                shrinkWrap: true,
-                physics: const NeverScrollableScrollPhysics(),
-                mainAxisSpacing: 16,
-                crossAxisSpacing: 16,
-                children: [
-                  FeatureCard(
-                    title: 'Challenges',
-                    description: 'Earn badges & rewards',
-                    icon: Icons.emoji_events,
-                    color: AppColors.accent,
-                    onTap: () => Get.toNamed(AppRoutes.getRouteName(AppRoute.messages)),
-                  ),
-                ],
-              ),
+              // Text(
+              //   'Gamification',
+              //   style: theme.textTheme.titleLarge?.copyWith(
+              //     fontWeight: FontWeight.bold,
+              //   ),
+              // ),
+              // const SizedBox(height: 16),
+              // GridView.count(
+              //   crossAxisCount: 2,
+              //   childAspectRatio: 1.7,
+              //   shrinkWrap: true,
+              //   physics: const NeverScrollableScrollPhysics(),
+              //   mainAxisSpacing: 16,
+              //   crossAxisSpacing: 16,
+              //   children: [
+              //     FeatureCard(
+              //       title: 'Challenges',
+              //       description: 'Earn badges & rewards',
+              //       icon: Icons.emoji_events,
+              //       color: AppColors.accent,
+              //       onTap: () => Get.toNamed(AppRoutes.getRouteName(AppRoute.challenges)),
+              //     ),
+              //   ],
+              // ),
               
-              const SizedBox(height: 32),
+              // const SizedBox(height: 32),
               
               // Recent Activity
               Row(
