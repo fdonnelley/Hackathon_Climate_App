@@ -5,19 +5,21 @@ class CarbonCalculatorService {
   // Constants for emissions calculations
   
   // Energy emissions factors
-  static const double _electricityEmissionFactor = 1.06; // lbs CO2 per kWh
-  static const double _averageElectricityPrice = 0.15; // $ per kWh
-  static const double _gasEmissionFactor = 12.13; // lbs CO2 per therm
-  static const double _averageGasPrice = 1.5; // $ per therm
+
+  static const double _electricityEmissionFactor = SetupDataModel.electricityEmissionFactor; // lb CO2 per kWh
+  static const double _averageElectricityPrice = SetupDataModel.averageElectricityPrice; // $ per kWh
+  static const double _gasEmissionFactor = SetupDataModel.gasEmissionFactor; // lb CO2 per therm
+  static const double _averageGasPrice = SetupDataModel.averageGasPrice; // $ per therm
   
   // Transportation emissions factors
-  static const double _gasolineEmissionFactor = 19.6; // lbs CO2 per gallon
-  static const double _airplaneEmissionFactor = 0.55; // lbs CO2 per passenger-mile
-  static const double _busEmissionFactor = 0.11; // lbs CO2 per passenger-mile
-  static const double _trainEmissionFactor = 0.07; // lbs CO2 per passenger-mile
+  static const double _gasolineEmissionFactor = SetupDataModel.gasolineEmissionFactor; // lb CO2 per gallon
+  static const double _airplaneEmissionFactor = SetupDataModel.airplaneEmissionFactor; // lb CO2 per passenger-mile
+  static const double _busEmissionFactor = SetupDataModel.busEmissionFactor; // lb CO2 per passenger-mile
+  static const double _trainEmissionFactor = SetupDataModel.trainEmissionFactor; // lb CO2 per passenger-mile
+
   
   // Weeks in a month for conversion
-  static const double _weeksPerMonth = 4.33;
+  static const double weeksPerMonth = 4.33;
   
   /// Calculate total carbon footprint from all sources (monthly in lbs CO2)
   static double calculateTotalFootprint(SetupDataModel data) {
@@ -29,6 +31,7 @@ class CarbonCalculatorService {
   }
   
   /// Calculate transportation emissions (monthly in lbs CO2)
+
   static double calculateTransportationEmissions(List<TransportationMethod> methods) {
     double weeklyEmissions = 0;
     
@@ -38,9 +41,10 @@ class CarbonCalculatorService {
     }
     
     // Convert to monthly
-    return weeklyEmissions * _weeksPerMonth;
+    return weeklyEmissions * weeksPerMonth;
   }
   
+
   /// Calculate emissions for a single transportation method (weekly in lbs CO2)
   static double calculateSingleTransportEmissions(TransportationMethod method) {
     switch (method.mode) {
@@ -50,7 +54,13 @@ class CarbonCalculatorService {
         return 0.0;
         
       case TransportMode.publicTransportation:
-        return 0.0;
+        double emissionsFactor = 1.0;
+        if (method.publicTransportType == PublicTransportType.bus) {
+          emissionsFactor = _busEmissionFactor;
+        } else if (method.publicTransportType == PublicTransportType.train) {
+          emissionsFactor = _trainEmissionFactor;
+        }
+        return method.milesPerWeek * emissionsFactor;
       
       case TransportMode.car:
         // For electric cars, emissions are minimal (we simplify to 0 here)
@@ -67,7 +77,7 @@ class CarbonCalculatorService {
             method.carpoolSize! > 1) {
           effectiveMpg *= method.carpoolSize!.toDouble();
         }
-        
+
         // lbs CO2 = (miles / mpg) * emission factor per gallon
         return (method.milesPerWeek / effectiveMpg) * _gasolineEmissionFactor;
       
@@ -76,7 +86,7 @@ class CarbonCalculatorService {
         return method.milesPerWeek * _airplaneEmissionFactor;
     }
   }
-  
+
   /// Calculate electricity emissions (monthly in lbs CO2)
   static double calculateElectricityEmissions(double monthlyBill, [double? averageBill]) {
     // If bill is 0 or not provided, use average if provided
@@ -108,19 +118,19 @@ class CarbonCalculatorService {
     double avgGasEmissions = calculateGasEmissions(80);
     
     // Average weekly car mileage: 250 miles with 25 MPG
-    double avgTransportationEmissions = (250 / 25) * _gasolineEmissionFactor * _weeksPerMonth;
+    double avgTransportationEmissions = (250 / 25) * _gasolineEmissionFactor * weeksPerMonth;
     
     return avgElectricityEmissions + avgGasEmissions + avgTransportationEmissions;
   }
   
   /// Convert monthly carbon footprint to weekly
   static double monthlyToWeekly(double monthlyEmissions) {
-    return monthlyEmissions / _weeksPerMonth;
+    return monthlyEmissions / weeksPerMonth;
   }
   
   /// Convert weekly carbon footprint to monthly
   static double weeklyToMonthly(double weeklyEmissions) {
-    return weeklyEmissions * _weeksPerMonth;
+    return weeklyEmissions * weeksPerMonth;
   }
   
   /// Calculate carbon savings from a specific action (in lbs CO2)
@@ -128,7 +138,7 @@ class CarbonCalculatorService {
     switch (action) {
       case CarbonSavingAction.reduceDriving:
         // Reducing driving by 20 miles per week
-        return (20 / 25) * _gasolineEmissionFactor * _weeksPerMonth;
+        return (20 / 25) * _gasolineEmissionFactor * weeksPerMonth;
         
       case CarbonSavingAction.improveHomeInsulation:
         // Save 10% on heating bill (average gas bill $80)
@@ -142,7 +152,7 @@ class CarbonCalculatorService {
         // Replace 50 car miles with public transit
         double carEmissions = (50 / 25) * _gasolineEmissionFactor;
         double transitEmissions = 50 * _busEmissionFactor;
-        return (carEmissions - transitEmissions) * _weeksPerMonth;
+        return (carEmissions - transitEmissions) * weeksPerMonth;
     }
   }
 }

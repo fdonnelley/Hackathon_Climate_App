@@ -57,14 +57,35 @@ class GoalSelectionStep extends StatelessWidget {
                 
                 const SizedBox(height: 8.0),
                 
-                Obx(() => Text(
-                  '${(controller.setupData.value.calculatedCarbonFootprint / 4.33).toStringAsFixed(1)} kg CO₂',
-                  style: Theme.of(context).textTheme.headlineMedium?.copyWith(
-                    fontWeight: FontWeight.bold,
-                    color: Theme.of(context).primaryColor,
-                  ),
-                  textAlign: TextAlign.center,
-                )),
+                Obx(() {
+                  // Calculate weekly footprint
+                  final weeklyFootprint = controller.setupData.value.calculatedCarbonFootprint / 4.33;
+                  
+                  // Define average weekly carbon emission
+                  const double averageWeeklyEmission = 285.0;
+                  
+                  // Determine color based on comparison with average
+                  Color footprintColor;
+                  if (weeklyFootprint < averageWeeklyEmission * 0.85) {
+                    // Below average (more than 15% below)
+                    footprintColor = Colors.green;
+                  } else if (weeklyFootprint > averageWeeklyEmission * 1.15) {
+                    // Above average (more than 15% above)
+                    footprintColor = Colors.red;
+                  } else {
+                    // Close to average (within ±15%)
+                    footprintColor = Colors.amber;
+                  }
+                  
+                  return Text(
+                    '${weeklyFootprint.toStringAsFixed(1)} lb CO₂',
+                    style: Theme.of(context).textTheme.headlineMedium?.copyWith(
+                      fontWeight: FontWeight.bold,
+                      color: footprintColor,
+                    ),
+                    textAlign: TextAlign.center,
+                  );
+                }),
                 
                 const SizedBox(height: 8.0),
                 
@@ -153,8 +174,11 @@ class GoalSelectionStep extends StatelessWidget {
     required VoidCallback onTap,
     required double carbonFootprint,
   }) {
+    // Calculate the weekly carbon footprint
+    final weeklyFootprint = carbonFootprint / 4.33;
+    
     // Calculate the target based on reduction percentage
-    final targetBudget = carbonFootprint * (1 - level.reductionPercentage);
+    final targetBudget = weeklyFootprint * (1 - level.reductionPercentage);
     
     return GestureDetector(
       onTap: onTap,
@@ -217,7 +241,7 @@ class GoalSelectionStep extends StatelessWidget {
                   const SizedBox(height: 8.0),
                   
                   Text(
-                    'Weekly Goal: ${targetBudget.toStringAsFixed(1)} kg CO₂',
+                    'Weekly Goal: ${targetBudget.toStringAsFixed(1)} lb CO₂',
                     style: Theme.of(context).textTheme.bodyMedium?.copyWith(
                       fontWeight: FontWeight.bold,
                       color: isSelected 

@@ -1,8 +1,19 @@
 import 'package:get/get.dart';
 import '../../carbon_tracker/models/usage_category_model.dart';
+import '../../../features/carbon_tracker/services/carbon_calculator_service.dart';
 
 /// Model to store setup data collected during the initial setup flow
 class SetupDataModel {
+  // Emission factors
+  static const double electricityEmissionFactor = 0.92; // lb CO2 per kWh
+  static const double averageElectricityPrice = 0.15; // $ per kWh
+  static const double gasEmissionFactor = 11.7; // lb CO2 per therm
+  static const double averageGasPrice = 1.5; // $ per therm
+  static const double gasolineEmissionFactor = 19.6; // lb CO2 per gallon
+  static const double airplaneEmissionFactor = 0.2; // lb CO2 per passenger-mile
+  static const double busEmissionFactor = 0.45; // lb CO2 per passenger-mile
+  static const double trainEmissionFactor = 0.22; // lb CO2 per passenger-mile
+  
   // User information
   final String userName;
   
@@ -14,7 +25,7 @@ class SetupDataModel {
   List<TransportationMethod> transportationMethods;
   
   // Calculated carbon footprint - Not final so it can be updated
-  double calculatedCarbonFootprint; // in kg CO2 per month
+  double calculatedCarbonFootprint; // in lb CO2 per month
   
   // Selected goal level
   final CarbonGoalLevel selectedGoalLevel;
@@ -59,28 +70,23 @@ class SetupDataModel {
     );
   }
   
-  /// Estimate weekly carbon footprint based on transportation and energy usage
-  double estimateFootprint() {
-    // Start with the stored carbon footprint (monthly) and convert to weekly
-    double weekly = 0.0;
+//   /// Estimate weekly carbon footprint based on transportation and energy usage
+//   double estimateFootprint() {
+//     // Calculate weekly transportation emissions using the service
+//     double weekly = 0.0;
     
-    // If we have transportation methods, use those for more accurate calculation
-    if (transportationMethods.isNotEmpty) {
-      double transportEmissions = 0.0;
+//     // If we have transportation methods, use the service for calculation
+//     if (transportationMethods.isNotEmpty) {
+//       // Calculate weekly transportation emissions
+//       double transportEmissions = CarbonCalculatorService.calculateTransportationEmissions(transportationMethods) / CarbonCalculatorService.weeksPerMonth;
       
-      // Sum up emissions from all transportation methods
-      for (var transport in transportationMethods) {
-        transportEmissions += transport.calculateWeeklyEmissions();
-      }
-      
-      // Add transportation emissions to the total
-      weekly += transportEmissions;
-    }
-
+//       // Add transportation emissions to the total
+//       weekly += transportEmissions;
+//     }
     
-    // Return the weekly estimate
-    return weekly;
-  }
+//     // Return the weekly estimate
+//     return weekly;
+//   }
 }
 
 /// Represents a transportation method with usage details
@@ -103,46 +109,9 @@ class TransportationMethod {
     this.publicTransportType,
   });
   
-  /// Calculate weekly emissions in lbs CO2
+  /// Calculate weekly emissions in lb CO2
   double calculateWeeklyEmissions() {
-    switch (mode) {
-      case TransportMode.walking:
-      case TransportMode.bicycle:
-        // Zero emissions for these modes
-        return 0.0;
-      
-      case TransportMode.publicTransportation:
-        // Different emissions for bus vs train
-        if (publicTransportType == PublicTransportType.bus) {
-          // Bus emissions: ~0.11 lbs CO2 per passenger-mile
-          return milesPerWeek * 0.11;
-        } else if (publicTransportType == PublicTransportType.train) {
-          // Train emissions: ~0.07 lbs CO2 per passenger-mile
-          return milesPerWeek * 0.07;
-        }
-        return 0.0;
-      
-      case TransportMode.car:
-        // For electric cars, emissions are minimal
-        if (carType == CarType.electric) {
-          return 0.0;
-        }
-        
-        // Calculate effective MPG, factoring in carpool if applicable
-        double effectiveMpg = mpg ?? (carType?.defaultMpg ?? 25.0);
-        
-        // If it's a carpool, divide emissions by number of people (multiply MPG)
-        if (carUsageType == CarUsageType.carpool && carpoolSize != null && carpoolSize! > 1) {
-          effectiveMpg *= carpoolSize!.toDouble();
-        }
-        
-        // lbs CO2 per gallon of gasoline is 19.6 lbs CO2
-        return (milesPerWeek / effectiveMpg) * 19.6;
-      
-      case TransportMode.airplane:
-        // Airplanes emit about 0.55 lbs CO2 per passenger-mile
-        return milesPerWeek * 0.55;
-    }
+    return CarbonCalculatorService.calculateSingleTransportEmissions(this);
   }
 }
 
@@ -293,17 +262,18 @@ extension CarbonGoalLevelExt on CarbonGoalLevel {
     }
   }
 
-  double get weeklyBudgetGoal {
-    // Get average weekly carbon budget in pounds
-    double averageWeekly = 175.0; // Average weekly emissions in lbs CO2 (~80 kg * 2.20462)
+
+  double calculateWeeklyBudgetGoal(double monthlyFootprint) {
+    // Convert monthly footprint to weekly
+    double weeklyFootprint = monthlyFootprint / CarbonCalculatorService.weeksPerMonth;
     
     switch (this) {
       case CarbonGoalLevel.minimal:
-        return averageWeekly * 0.9; // 10% reduction
+        return weeklyFootprint * 0.9; // 10% reduction
       case CarbonGoalLevel.moderate:
-        return averageWeekly * 0.75; // 25% reduction
+        return weeklyFootprint * 0.75; // 25% reduction
       case CarbonGoalLevel.climateSaver:
-        return averageWeekly * 0.5; // 50% reduction
+        return weeklyFootprint * 0.5; // 50% reduction
     }
   }
 }

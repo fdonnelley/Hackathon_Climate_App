@@ -108,8 +108,8 @@ class CarbonBudgetModel {
       
   /// Create a default budget model for a new user
   factory CarbonBudgetModel.createDefault(String userId) {
-    // Default: 5 kg CO2 per day (5000g), calculated for week and month
-    const double defaultDailyBudget = 5000;
+    // Default: 500 lb CO2 per day, calculated for week and month
+    const double defaultDailyBudget = 500;
     
     return CarbonBudgetModel(
       id: DateTime.now().millisecondsSinceEpoch.toString(),

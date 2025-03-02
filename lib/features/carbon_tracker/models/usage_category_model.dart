@@ -80,22 +80,22 @@ extension TransportModeExtension on TransportMode {
     }
   }
   
-  /// Get default emissions factor per mile (kg CO2)
+  /// Get default emissions factor per mile (lb CO2)
   double get emissionsPerMile {
     switch (this) {
       case TransportMode.walking:
       case TransportMode.bicycle:
         return 0.0;
       case TransportMode.car:
-        return 0.357; // Average car (25 MPG) emits about 8.89 kg CO2 per gallon / 25 miles = 0.357 kg/mile
+        return 0.786; // Average car (25 MPG) emits about 19.64 lb CO2 per gallon / 25 miles = 0.786 lb/mile
       case TransportMode.electricVehicle:
-        return 0.1; // Average EV based on US grid mix
+        return 0.22; // Average EV based on US grid mix
       case TransportMode.bus:
-        return 0.107; // Per passenger mile
+        return 0.236; // Per passenger mile
       case TransportMode.train:
-        return 0.041; // Per passenger mile
+        return 0.09; // Per passenger mile
       case TransportMode.airplane:
-        return 0.25; // Per passenger mile, average for domestic flights
+        return 0.55; // Per passenger mile, average for domestic flights
     }
   }
   

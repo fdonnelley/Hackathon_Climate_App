@@ -349,7 +349,7 @@ class _ChatbotScreenState extends State<ChatbotScreen> {
                     return ListTile(
                       leading: Icon(_getActivityIcon(activity['icon'] as String)),
                       title: Text(activity['title'] as String),
-                      subtitle: Text('${activity['emissions']} kg CO2'),
+                      subtitle: Text('${activity['emissions']} lb CO2'),
                       dense: true,
                     );
                   }),

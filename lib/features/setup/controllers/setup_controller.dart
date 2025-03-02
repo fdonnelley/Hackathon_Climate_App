@@ -40,7 +40,12 @@ class SetupController extends GetxController {
   final carpoolSize = 2.obs;
   
   // Average transportation mileage per week value
-  final double averageMileage = 200.0;
+  final double averageCarMileage = 250.0;
+  final double averageWalkingMileage = 2.0;
+  final double averageBicycleMileage = 10.0;
+  final double averageBusMileage = 40.0;
+  final double averageTrainMileagePerMonth = 100.0;
+  final double averageAirplaneMileagePerYear = 2000.0;
 
   // Selected goal level for carbon reduction
   final Rx<CarbonGoalLevel> selectedGoalLevel = CarbonGoalLevel.moderate.obs;
@@ -306,7 +311,7 @@ class SetupController extends GetxController {
 • Average American drives about 200 miles per week
 • Sedans average 25 MPG, SUVs average 20 MPG, trucks average 18 MPG
 • Electric vehicles produce zero direct emissions
-• Public transportation averages 0.25 kg CO₂/mile (much lower than cars)
+• Public transportation averages 0.25 lb CO₂/mile (much lower than cars)
 • Walking and biking produce zero emissions
 ''';
   }

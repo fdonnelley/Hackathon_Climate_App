@@ -177,11 +177,12 @@ class ChatbotController extends GetxController {
           else if (category == 'energy') {
             // Total for the category
             final total = subCategories.values.fold<double>(0, (sum, val) => sum + val);
+
             activitySummary += '$category: ${total.toStringAsFixed(1)} lbs CO2 (';
-            
             // Add subcategories
             subCategories.forEach((subType, emissions) {
               if (subType != null) {
+
                 activitySummary += '$subType: ${emissions.toStringAsFixed(1)} lbs, ';
               } else {
                 activitySummary += 'other: ${emissions.toStringAsFixed(1)} lbs, ';
@@ -224,6 +225,7 @@ class ChatbotController extends GetxController {
       // Build context
       carbonContext.value = '''
 Carbon budget status:
+<<<<<<< HEAD
 - Daily: ${dailyEmissions.toStringAsFixed(1)} lbs / ${dailyBudget.toStringAsFixed(1)} lbs ($dailyPercentage%)
 - Weekly: ${weeklyEmissions.toStringAsFixed(1)} lbs / ${weeklyBudget.toStringAsFixed(1)} lbs ($weeklyPercentage%)
 - Monthly: ${monthlyEmissions.toStringAsFixed(1)} lbs / ${monthlyBudget.toStringAsFixed(1)} lbs ($monthlyPercentage%)

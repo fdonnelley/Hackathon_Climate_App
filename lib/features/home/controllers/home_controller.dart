@@ -50,19 +50,19 @@ class HomeController extends GetxController {
   void setUserData({
     required String name,
     required CarbonGoalLevel goalLevel,
-    SetupDataModel? setupData,
+    required SetupDataModel setupData,
   }) {
     // Set user information
     userName.value = name;
     this.goalLevel.value = goalLevel;
     
-    // Set emissions to zero initially
+    // Reset emissions
     weeklyEmissions.value = 0.0;
     monthlyEmissions.value = 0.0;
     dailyEmissions.value = 0.0;
     
-    // Set budgets based on selected goal level (already in pounds)
-    weeklyBudget.value = goalLevel.weeklyBudgetGoal;
+    // Set budgets based on selected goal level and user's carbon footprint
+    weeklyBudget.value = goalLevel.calculateWeeklyBudgetGoal(setupData.calculatedCarbonFootprint);
     
     // Calculate monthly budget (weekly * 4.33)
     monthlyBudget.value = weeklyBudget.value * 4.33;
@@ -99,7 +99,7 @@ class HomeController extends GetxController {
     recentActivities.clear();
     
     // Add the transportation methods from setup as activities
-    if (setupData != null && setupData.transportationMethods.isNotEmpty) {
+    if (setupData.transportationMethods.isNotEmpty) {
       // Convert transportation methods to activities
       for (var transport in setupData.transportationMethods) {
         final weeklyEmissions = transport.calculateWeeklyEmissions();
