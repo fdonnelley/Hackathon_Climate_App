@@ -62,7 +62,7 @@ class SetupDataModel {
   /// Estimate weekly carbon footprint based on transportation and energy usage
   double estimateFootprint() {
     // Start with the stored carbon footprint (monthly) and convert to weekly
-    double weekly = calculatedCarbonFootprint / 4.33; // Convert monthly to weekly
+    double weekly = 0.0;
     
     // If we have transportation methods, use those for more accurate calculation
     if (transportationMethods.isNotEmpty) {
@@ -74,8 +74,9 @@ class SetupDataModel {
       }
       
       // Add transportation emissions to the total
-      weekly = transportEmissions;
+      weekly += transportEmissions;
     }
+
     
     // Return the weekly estimate
     return weekly;

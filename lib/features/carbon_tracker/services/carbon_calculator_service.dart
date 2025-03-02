@@ -50,12 +50,6 @@ class CarbonCalculatorService {
         return 0.0;
         
       case TransportMode.publicTransportation:
-        // Different emissions for bus vs train
-        if (method.publicTransportType == PublicTransportType.bus) {
-          return method.milesPerWeek * _busEmissionFactor;
-        } else if (method.publicTransportType == PublicTransportType.train) {
-          return method.milesPerWeek * _trainEmissionFactor;
-        }
         return 0.0;
       
       case TransportMode.car:

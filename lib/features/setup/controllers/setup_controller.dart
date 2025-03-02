@@ -141,12 +141,23 @@ class SetupController extends GetxController {
     }
   }
   
-  // Add a transportation method
+  // Add a transportation method to the list
   void addTransportationMethod() {
-    double milesPerWeek = double.tryParse(mileageController.text) ?? 0;
+    // Get miles per week from input
+    double inputMileage = double.tryParse(mileageController.text) ?? 0;
     
-    double? mpg;
+    // Convert mileage based on transportation mode
+    double milesPerWeek = _convertToWeeklyMileage(
+      inputMileage, 
+      selectedTransportMode.value, 
+      selectedTransportMode.value == TransportMode.publicTransportation 
+        ? selectedPublicTransportType.value 
+        : null
+    );
+    
+    // Car-specific variables
     CarType? carType;
+    double? mpg;
     
     // If car mode is selected, handle MPG and car type
     if (selectedTransportMode.value == TransportMode.car) {
@@ -180,12 +191,32 @@ class SetupController extends GetxController {
     mileageController.clear();
     mpgController.clear();
     
-    // Show a quick confirmation
-    Get.snackbar(
-      'Transportation Added',
-      '${method.mode.displayName} - ${milesPerWeek.toStringAsFixed(0)} miles per week',
-      snackPosition: SnackPosition.BOTTOM,
-    );
+    
+  }
+  
+  // Convert input mileage to weekly mileage based on transportation mode
+  double _convertToWeeklyMileage(double inputMileage, TransportMode mode, PublicTransportType? publicType) {
+    if (mode == TransportMode.airplane) {
+      // Convert yearly mileage to weekly
+      return inputMileage / 52.0;
+    } else if (mode == TransportMode.publicTransportation && publicType == PublicTransportType.train) {
+      // Convert monthly mileage to weekly
+      return inputMileage / 4.33;
+    } else {
+      // Already weekly
+      return inputMileage;
+    }
+  }
+  
+  // Get text for the mileage period for display
+  String _getMileagePeriodText(TransportMode mode, PublicTransportType? publicType) {
+    if (mode == TransportMode.airplane) {
+      return 'per year';
+    } else if (mode == TransportMode.publicTransportation && publicType == PublicTransportType.train) {
+      return 'per month';
+    } else {
+      return 'per week';
+    }
   }
   
   // Remove a transportation method

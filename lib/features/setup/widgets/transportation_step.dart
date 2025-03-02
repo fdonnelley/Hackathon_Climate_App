@@ -304,10 +304,11 @@ class TransportationStep extends StatelessWidget {
                 case 3:
                   return Column(
                     children: [
-                      TextField(
+                      Obx(() => TextField(
                         controller: controller.mileageController,
                         decoration: InputDecoration(
-                          labelText: 'Miles Per Week',
+                          labelText: _getMileageLabel(controller.selectedTransportMode.value, 
+                                                     controller.selectedPublicTransportType.value),
                           hintText: controller.averageMileage.toStringAsFixed(0),
                           suffixText: 'miles',
                           border: const OutlineInputBorder(),
@@ -316,14 +317,15 @@ class TransportationStep extends StatelessWidget {
                         inputFormatters: [
                           FilteringTextInputFormatter.digitsOnly,
                         ],
-                      ),
+                      )),
                       const SizedBox(height: 8.0),
-                      Text(
-                        'Average weekly mileage is ${controller.averageMileage.toStringAsFixed(0)} miles',
+                      Obx(() => Text(
+                        _getMileageHelpText(controller.selectedTransportMode.value, 
+                                           controller.selectedPublicTransportType.value),
                         style: Theme.of(context).textTheme.bodySmall?.copyWith(
                           fontStyle: FontStyle.italic,
                         ),
-                      ),
+                      )),
                       
                       // MPG input (only for car)
                       Obx(() => Visibility(
@@ -506,7 +508,7 @@ class TransportationStep extends StatelessWidget {
           
           // Introduction
           Text(
-            'Add each type of transportation you regularly use and how many miles per week.',
+            'Add each type of transportation you regularly use.',
             style: Theme.of(context).textTheme.bodyLarge,
           ),
           
@@ -595,7 +597,7 @@ class TransportationStep extends StatelessWidget {
         subtitle: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text('${method.milesPerWeek.toStringAsFixed(0)} miles per week'),
+            Text('${method.milesPerWeek.toStringAsFixed(0)} miles per week${_getOriginalMileageText(method)}'),
             if (method.mode == TransportMode.car && method.carType != null && method.carType != CarType.electric)
               Text('${method.carType!.displayName} - ${method.mpg?.toStringAsFixed(0) ?? method.carType!.defaultMpg.toStringAsFixed(0)} MPG'),
             if (method.mode == TransportMode.car && method.carUsageType == CarUsageType.carpool && method.carpoolSize != null)
@@ -664,5 +666,40 @@ class TransportationStep extends StatelessWidget {
       case TransportMode.airplane:
         return Icons.airplanemode_active;
     }
+  }
+  
+  // Helper method to get the appropriate mileage label based on transportation mode
+  String _getMileageLabel(TransportMode mode, PublicTransportType? publicType) {
+    if (mode == TransportMode.airplane) {
+      return 'Miles Per Year';
+    } else if (mode == TransportMode.publicTransportation && publicType == PublicTransportType.train) {
+      return 'Miles Per Month';
+    } else {
+      return 'Miles Per Week';
+    }
+  }
+  
+  // Helper method to get the appropriate mileage help text
+  String _getMileageHelpText(TransportMode mode, PublicTransportType? publicType) {
+    if (mode == TransportMode.airplane) {
+      return 'Enter your estimated yearly air travel mileage';
+    } else if (mode == TransportMode.publicTransportation && publicType == PublicTransportType.train) {
+      return 'Enter your estimated monthly train travel mileage';
+    } else {
+      return 'Average weekly mileage is ${controller.averageMileage.toStringAsFixed(0)} miles';
+    }
+  }
+  
+  // Get original mileage text for display in the transportation method card
+  String _getOriginalMileageText(TransportationMethod method) {
+    if (method.mode == TransportMode.airplane) {
+      // Show original yearly value
+      return ' (${(method.milesPerWeek * 52.0).toStringAsFixed(0)} miles per year)';
+    } else if (method.mode == TransportMode.publicTransportation && 
+               method.publicTransportType == PublicTransportType.train) {
+      // Show original monthly value
+      return ' (${(method.milesPerWeek * 4.33).toStringAsFixed(0)} miles per month)';
+    }
+    return '';
   }
 }
