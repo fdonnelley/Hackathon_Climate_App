@@ -1,14 +1,13 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_markdown/flutter_markdown.dart';
 import 'package:url_launcher/url_launcher.dart';
+import 'package:flutter_markdown/flutter_markdown.dart';
 
 import '../../../core/theme/app_theme.dart';
-import '../models/chat_message.dart';
 
 /// A chat bubble widget for displaying chat messages
 class ChatBubble extends StatelessWidget {
   /// The message to display
-  final ChatMessage message;
+  final Map<String, dynamic> message;
   
   /// Whether the message is from the current user
   final bool isCurrentUser;
@@ -31,30 +30,27 @@ class ChatBubble extends StatelessWidget {
     // System messages have their own style
     if (isSystemMessage) {
       return Container(
-        margin: const EdgeInsets.symmetric(vertical: 8.0),
-        padding: const EdgeInsets.all(12.0),
+        margin: const EdgeInsets.symmetric(vertical: 8.0, horizontal: 16.0),
+        padding: const EdgeInsets.symmetric(vertical: 10.0, horizontal: 16.0),
         decoration: BoxDecoration(
-          color: AppColors.primary.withOpacity(0.1),
+          color: theme.colorScheme.surfaceVariant.withOpacity(0.5),
           borderRadius: BorderRadius.circular(12.0),
-          border: Border.all(
-            color: AppColors.primary.withOpacity(0.3),
-            width: 1.0,
-          ),
         ),
-        child: Row(
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Icon(
-              Icons.eco,
-              color: AppColors.primary,
-              size: 20,
+            Text(
+              message['text'] as String,
+              style: theme.textTheme.bodyMedium?.copyWith(
+                color: theme.colorScheme.onSurfaceVariant,
+              ),
             ),
-            const SizedBox(width: 8),
-            Expanded(
-              child: Text(
-                message.text,
-                style: TextStyle(
-                  color: Colors.black87,
-                ),
+            const SizedBox(height: 4.0),
+            Text(
+              _formatTime(message['timestamp'] as DateTime),
+              style: theme.textTheme.bodySmall?.copyWith(
+                color: theme.colorScheme.onSurfaceVariant.withOpacity(0.7),
+                fontSize: 10.0,
               ),
             ),
           ],
@@ -62,99 +58,49 @@ class ChatBubble extends StatelessWidget {
       );
     }
     
-    return Container(
-      margin: const EdgeInsets.symmetric(vertical: 8.0),
+    final backgroundColor = isCurrentUser
+        ? theme.colorScheme.primary
+        : theme.colorScheme.surfaceVariant;
+    final textColor = isCurrentUser
+        ? theme.colorScheme.onPrimary
+        : theme.colorScheme.onSurfaceVariant;
+    
+    return Align(
       alignment: isCurrentUser ? Alignment.centerRight : Alignment.centerLeft,
-      child: ConstrainedBox(
+      child: Container(
+        margin: const EdgeInsets.symmetric(vertical: 8.0, horizontal: 16.0),
+        padding: const EdgeInsets.symmetric(vertical: 10.0, horizontal: 16.0),
         constraints: BoxConstraints(
           maxWidth: MediaQuery.of(context).size.width * 0.75,
         ),
-        child: Container(
-          padding: const EdgeInsets.symmetric(
-            horizontal: 16.0,
-            vertical: 12.0,
-          ),
-          decoration: BoxDecoration(
-            color: isCurrentUser
-                ? AppColors.primary
-                : theme.colorScheme.surface,
-            borderRadius: BorderRadius.circular(16.0),
-            boxShadow: [
-              BoxShadow(
-                color: Colors.black.withOpacity(0.05),
-                spreadRadius: 1,
-                blurRadius: 3,
-                offset: const Offset(0, 1),
-              ),
-            ],
-          ),
-          child: Column(
-            crossAxisAlignment: isCurrentUser
-                ? CrossAxisAlignment.end
-                : CrossAxisAlignment.start,
-            children: [
-              // We use Markdown to render message text
-              MarkdownBody(
-                data: message.text,
-                styleSheet: MarkdownStyleSheet(
-                  p: TextStyle(
-                    color: isCurrentUser
-                        ? Colors.white
-                        : theme.textTheme.bodyMedium?.color,
-                    fontSize: 15,
-                  ),
-                  h1: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-                  h2: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
-                  h3: const TextStyle(fontSize: 14, fontWeight: FontWeight.bold),
-                  blockquote: TextStyle(
-                    color: isCurrentUser
-                        ? Colors.white.withOpacity(0.9)
-                        : theme.textTheme.bodyMedium?.color?.withOpacity(0.9),
-                    fontStyle: FontStyle.italic,
-                  ),
-                  code: TextStyle(
-                    backgroundColor: isCurrentUser
-                        ? Colors.white.withOpacity(0.2)
-                        : theme.colorScheme.onSurface.withOpacity(0.1),
-                    color: isCurrentUser
-                        ? Colors.white
-                        : theme.colorScheme.primary,
-                    fontSize: 14,
-                    fontFamily: 'monospace',
-                  ),
-                  codeblockDecoration: BoxDecoration(
-                    color: isCurrentUser
-                        ? Colors.white.withOpacity(0.1)
-                        : theme.colorScheme.onSurface.withOpacity(0.05),
-                    borderRadius: BorderRadius.circular(4.0),
-                  ),
-                  a: TextStyle(
-                    color: isCurrentUser
-                        ? Colors.white
-                        : theme.colorScheme.primary,
-                    decoration: TextDecoration.underline,
-                  ),
-                ),
-                onTapLink: (text, href, title) {
-                  if (href != null) {
-                    _launchUrl(href);
-                  }
-                },
-              ),
-              
-              // Message timestamp
-              const SizedBox(height: 4),
+        decoration: BoxDecoration(
+          color: backgroundColor,
+          borderRadius: BorderRadius.circular(16.0),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // Check if the message might contain a URL
+            if (message['text'].toString().contains('http') || 
+                message['text'].toString().contains('www.'))
+              _buildTextWithLinks(message['text'] as String, textColor)
+            else
               Text(
-                _formatTime(message.timestamp),
-                style: TextStyle(
-                  fontSize: 11,
-                  color: isCurrentUser
-                      ? Colors.white.withOpacity(0.7)
-                      : theme.textTheme.bodySmall?.color,
+                message['text'] as String,
+                style: theme.textTheme.bodyMedium?.copyWith(
+                  color: textColor,
                 ),
               ),
-            ],
-          ),
+            const SizedBox(height: 4.0),
+            Text(
+              _formatTime(message['timestamp'] as DateTime),
+              style: theme.textTheme.bodySmall?.copyWith(
+                color: textColor.withOpacity(0.7),
+                fontSize: 10.0,
+              ),
+              textAlign: TextAlign.right,
+            ),
+          ],
         ),
       ),
     );
@@ -181,6 +127,27 @@ class ChatBubble extends StatelessWidget {
   /// Pad single digit numbers with leading zero
   String _padZero(int number) {
     return number.toString().padLeft(2, '0');
+  }
+  
+  /// Build text with links
+  Widget _buildTextWithLinks(String text, Color textColor) {
+    return MarkdownBody(
+      data: text,
+      styleSheet: MarkdownStyleSheet(
+        p: TextStyle(
+          color: textColor,
+        ),
+        a: TextStyle(
+          color: textColor,
+          decoration: TextDecoration.underline,
+        ),
+      ),
+      onTapLink: (text, href, title) {
+        if (href != null) {
+          _launchUrl(href);
+        }
+      },
+    );
   }
   
   /// Launch a URL

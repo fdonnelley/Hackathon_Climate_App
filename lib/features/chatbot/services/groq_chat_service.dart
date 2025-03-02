@@ -1,7 +1,6 @@
 import 'dart:convert';
 import 'package:http/http.dart' as http;
 
-import '../models/chat_message.dart';
 import 'chat_service.dart';
 
 /// Chat service that uses Groq API
@@ -32,35 +31,37 @@ class GroqChatService implements ChatService {
   @override
   Future<String> generateResponse(
     String message, 
-    List<ChatMessage> conversationHistory, {
+    List<Map<String, dynamic>> conversationHistory, {
     String? systemPrompt,
   }) async {
     try {
-      // Create a copy of the conversation history and add the new user message
+      // Filter out system messages for Groq
       final messages = conversationHistory
-          .where((msg) => msg.sender != MessageSender.system)
+          .where((msg) => msg['isUser'] != null)
           .toList();
           
-      // Convert ChatMessage to Groq message format
+      // Convert message format to Groq message format
       final groqMessages = messages.map((message) {
-        String role;
-        switch (message.sender) {
-          case MessageSender.user:
-            role = 'user';
-            break;
-          case MessageSender.assistant:
-            role = 'assistant';
-            break;
-          default:
-            role = 'system';
-            break;
-        }
-        
+        String role = message['isUser'] == true ? 'user' : 'assistant';
         return {
           'role': role,
-          'content': message.text,
+          'content': message['text'],
         };
       }).toList();
+      
+      // Add the new message from the user
+      groqMessages.add({
+        'role': 'user',
+        'content': message,
+      });
+      
+      // Add system prompt if provided
+      if (systemPrompt != null && systemPrompt.isNotEmpty) {
+        groqMessages.insert(0, {
+          'role': 'system',
+          'content': systemPrompt,
+        });
+      }
       
       // Default system prompt for carbon footprint advice
       final defaultSystemPrompt = '''
@@ -83,13 +84,16 @@ When analyzing user data, provide the important insight without straying from th
       // Prepare the request body
       final body = jsonEncode({
         'model': model,
-        'messages': [
+        'messages': groqMessages.isEmpty ? [
           {
             'role': 'system',
             'content': systemPrompt ?? defaultSystemPrompt,
           },
-          ...groqMessages
-        ],
+          {
+            'role': 'user',
+            'content': message,
+          },
+        ] : groqMessages,
         'temperature': 0.5,
         'max_tokens': 250,
       });

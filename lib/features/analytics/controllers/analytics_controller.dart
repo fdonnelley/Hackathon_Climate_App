@@ -69,6 +69,7 @@ class AnalyticsController extends GetxController {
   void updateWeeklyData() {
     // Implementation for real app would fetch actual data for selected week
     _generateWeeklyEmissionsData();
+    _generateMilesByMode();
   }
   
   /// Get formatted week date range (e.g., "Feb 24 - Mar 2")
@@ -97,9 +98,9 @@ class AnalyticsController extends GetxController {
     return monthNames[month - 1];
   }
   
-  /// Get the weekly days labels
+  /// Get days of the week for the chart
   List<String> getWeekDays() {
-    return weeklyEmissions.map<String>((item) => item['day'] as String).toList();
+    return ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
   }
   
   /// Get max emission value for chart scaling
@@ -152,27 +153,74 @@ class AnalyticsController extends GetxController {
   List<BarChartGroupData> getWeeklyEmissionsBarData() {
     final List<BarChartGroupData> barGroups = [];
     
-    if (weeklyEmissions.isEmpty) return barGroups;
+    if (weeklyEmissions.isEmpty) {
+      // Create empty bar groups if no data
+      for (int i = 0; i < 7; i++) {
+        barGroups.add(
+          BarChartGroupData(
+            x: i,
+            barRods: [
+              BarChartRodData(
+                toY: 0,
+                color: Colors.grey.shade300,
+                width: 16,
+                borderRadius: const BorderRadius.only(
+                  topLeft: Radius.circular(4),
+                  topRight: Radius.circular(4),
+                ),
+              ),
+            ],
+          ),
+        );
+      }
+      return barGroups;
+    }
+    
+    // Find the maximum value for color scaling
+    double maxValue = 0;
+    for (final item in weeklyEmissions) {
+      final value = item['value'] as double;
+      if (value > maxValue) {
+        maxValue = value;
+      }
+    }
     
     // Create bar chart groups
     for (int i = 0; i < weeklyEmissions.length; i++) {
       final item = weeklyEmissions[i];
+      final value = item['value'] as double;
+      
+      // Calculate a color from green to red based on percentage of max
+      Color barColor;
+      if (maxValue > 0) {
+        final percentage = value / maxValue;
+        if (percentage < 0.3) {
+          barColor = const Color(0xFF5CC971); // Green for low emissions
+        } else if (percentage < 0.7) {
+          barColor = const Color(0xFFFEBD12); // Yellow for medium emissions
+        } else {
+          barColor = const Color(0xFFFF6150); // Red for high emissions
+        }
+      } else {
+        barColor = Colors.grey.shade300; // Default for empty bars
+      }
+      
       barGroups.add(
         BarChartGroupData(
           x: i,
           barRods: [
             BarChartRodData(
-              toY: item['value'],
-              color: item['value'] > 0 
-                  ? const Color(0xFF5CC971)  // Green
-                  : Colors.grey.shade300,    // Grey for empty bars
-              width: 16,
+              toY: value,
+              color: value > 0 ? barColor : Colors.grey.shade300,
+              width: 20,
               borderRadius: const BorderRadius.only(
                 topLeft: Radius.circular(4),
                 topRight: Radius.circular(4),
               ),
             ),
           ],
+          // Show the value on top of the bar
+          showingTooltipIndicators: value > 0 ? [0] : [],
         ),
       );
     }
@@ -188,181 +236,413 @@ class AnalyticsController extends GetxController {
   
   /// Connect to real data from the home controller
   void _connectToRealData() {
-    // Clear existing data
-    carbonBreakdown.clear();
-    milesByMode.clear();
+    // No need to reassign _homeController since it's already initialized as final
     
-    // Generate weekly data
+    // Generate initial data
     _generateWeeklyEmissionsData();
+    _generateCarbonBreakdown();
+    _generateMilesByMode();
+    
+    // Listen for changes in activities
+    ever(_homeController.recentActivities, (_) {
+      _generateWeeklyEmissionsData();
+      _generateCarbonBreakdown();
+      _generateMilesByMode();
+      update();
+    });
   }
   
   /// Generate weekly emissions data for the selected week
   void _generateWeeklyEmissionsData() {
+    // Clear previous data
     weeklyEmissions.clear();
     
-    final startOfWeek = _getStartOfWeek(selectedWeek.value);
+    // Get the selected week's start and end dates
+    final startDate = _getStartOfWeek(selectedWeek.value);
+    final endDate = startDate.add(const Duration(days: 6));
     
-    // Get all recent activities from the home controller
-    final homeController = _homeController;
-    final activities = homeController.recentActivities;
+    // Check if we have any activities
+    if (_homeController.recentActivities.isEmpty) {
+      _generateEmptyWeekData();
+      return;
+    }
     
-    // Define specific transportation and energy categories
-    final transportCategories = {
-      'car': 'Car',
-      'bus': 'Bus',
-      'train': 'Train',
-      'bike': 'Bicycle',
-      'walk': 'Walking',
-      'plane': 'Air Travel',
-    };
+    // Filter activities for the selected week
+    final List<Map<String, dynamic>> weekActivities = _homeController.recentActivities
+        .where((activity) {
+          // Skip activities with no date
+          if (activity['date'] == null) return false;
+          
+          final DateTime activityDate = activity['date'] as DateTime;
+          
+          // Check if activity date is within the selected week
+          return activityDate.isAfter(startDate.subtract(const Duration(days: 1))) && 
+                 activityDate.isBefore(endDate.add(const Duration(days: 1)));
+        })
+        .toList();
     
-    final energyCategories = {
-      'electricity': 'Electricity',
-      'gas': 'Natural Gas',
-      'heating': 'Heating',
-      'cooling': 'Cooling',
-    };
+    // Create a map to store emissions by day of week
+    final Map<int, double> emissionsByDay = {};
     
-    // Create maps to store totals by category
-    final carbonByCategory = <String, double>{};
-    final milesByType = <String, double>{};
+    // Initialize all days to zero
+    for (int i = 0; i < 7; i++) {
+      emissionsByDay[i] = 0;
+    }
     
-    // Conversion factors for different transportation modes (lbs CO2 per mile)
-    final emissionsPerMile = {
-      'car': 0.9, // Average car
-      'suv': 1.1, // SUV
-      'hybrid': 0.5, // Hybrid car
-      'bus': 0.5, // Bus
-      'train': 0.3, // Train
-      'plane': 1.5, // Airplane
-      'bike': 0.0, // Bicycle
-      'walk': 0.0, // Walking
-    };
-    
-    // Calculate total carbon and miles by category
-    for (final activity in activities) {
-      final type = activity['type'] as String;
-      final subType = activity['subType'] as String?;
-      final emissions = activity['emissions'] as num;
-      
-      // Determine category label
-      String category;
-      
-      if (type == 'transportation') {
-        // Use specific category if available, otherwise use generic transportation
-        String transportType = 'Other Transport';
-        if (subType != null && transportCategories.containsKey(subType)) {
-          transportType = transportCategories[subType]!;
-        }
-        category = transportType;
+    // Aggregate emissions by day
+    for (final activity in weekActivities) {
+      if (activity['date'] != null && activity['emissions'] != null) {
+        final DateTime date = activity['date'] as DateTime;
+        final double emissions = (activity['emissions'] as num).toDouble();
         
-        // Estimate miles based on emissions using conversion factors
-        double estimatedMiles = 0.0;
-        double conversionFactor = 0.7; // Default factor
+        // Calculate day of week (0 = Sunday, 6 = Saturday)
+        final dayOfWeek = date.weekday % 7;
         
-        if (subType != null && emissionsPerMile.containsKey(subType)) {
-          conversionFactor = emissionsPerMile[subType]!;
-        }
-        
-        // Avoid division by zero
-        if (conversionFactor > 0) {
-          estimatedMiles = emissions.toDouble() / conversionFactor;
-        } else {
-          // For zero-emission modes, estimate 5 miles per activity
-          estimatedMiles = 5.0;
-        }
-        
-        // Add to miles breakdown
-        milesByType[transportType] = (milesByType[transportType] ?? 0.0) + estimatedMiles;
-      } else if (type == 'energy') {
-        // Use specific category if available, otherwise use generic energy
-        if (subType != null && energyCategories.containsKey(subType)) {
-          category = energyCategories[subType]!;
-        } else {
-          category = 'Other Energy';
-        }
-      } else if (type == 'food') {
-        category = 'Food';
-      } else if (type == 'consumer') {
-        category = 'Consumer Goods';
-      } else {
-        category = StringExtension(type as String).capitalize;
+        // Add emissions to the corresponding day
+        emissionsByDay[dayOfWeek] = (emissionsByDay[dayOfWeek] ?? 0) + emissions;
       }
-      
-      // Add to carbon breakdown
-      carbonByCategory[category] = (carbonByCategory[category] ?? 0.0) + emissions.toDouble();
     }
     
-    // Calculate totals
-    double totalCarbonValue = 0.0;
-    double totalMilesValue = 0.0;
-    
-    // Convert maps to lists for the charts
-    final carbonItems = carbonByCategory.entries.map((entry) => {
-      'label': entry.key,
-      'value': entry.value,
-    }).toList();
-    
-    final milesItems = milesByType.entries.map((entry) => {
-      'label': entry.key,
-      'value': entry.value,
-    }).toList();
-    
-    // Sort items by value (descending)
-    carbonItems.sort((a, b) => (b['value'] as num).compareTo(a['value'] as num));
-    milesItems.sort((a, b) => (b['value'] as num).compareTo(a['value'] as num));
-    
-    // Calculate totals
-    totalCarbonValue = carbonItems.fold(0.0, (sum, item) => sum + (item['value'] as num));
-    totalMilesValue = milesItems.fold(0.0, (sum, item) => sum + (item['value'] as num));
-    
-    totalCarbon.value = totalCarbonValue;
-    totalMiles.value = totalMilesValue;
-    
-    // Calculate percentages and add to breakdown lists
-    for (final item in carbonItems) {
-      carbonBreakdown.add({
-        'label': StringExtension(item['label'] as String).capitalize,
-        'value': item['value'],
-        'percentage': totalCarbonValue > 0 ? (item['value'] as num) / totalCarbonValue * 100 : 0.0,
+    // Convert map to list format for the chart
+    emissionsByDay.forEach((day, emissions) {
+      weeklyEmissions.add({
+        'day': day,
+        'value': emissions,
       });
-    }
+    });
     
-    for (final item in milesItems) {
-      milesByMode.add({
-        'label': item['label'],
-        'value': item['value'],
-        'percentage': totalMilesValue > 0 ? (item['value'] as num) / totalMilesValue * 100 : 0.0,
-      });
-    }
+    // Sort by day of week
+    weeklyEmissions.sort((a, b) => (a['day'] as int).compareTo(b['day'] as int));
     
-    // If we don't have any data, add placeholder data
-    if (carbonBreakdown.isEmpty) {
-      carbonBreakdown.add({
-        'label': 'No Data',
+    // If we have no data for this week, create empty data
+    if (weeklyEmissions.isEmpty) {
+      _generateEmptyWeekData();
+    }
+  }
+  
+  /// Generate empty week data for display when no real data exists
+  void _generateEmptyWeekData() {
+    weeklyEmissions.clear();
+    for (int i = 0; i < 7; i++) {
+      weeklyEmissions.add({
+        'day': i,
         'value': 0.0,
-        'percentage': 100.0,
-      });
-    }
-    
-    if (milesByMode.isEmpty) {
-      milesByMode.add({
-        'label': 'No Data',
-        'value': 0.0,
-        'percentage': 100.0,
       });
     }
   }
   
-  /// Get carbon categories breakdown
-  void _calculateCarbonBreakdown() {
-    // This method is now replaced by _connectToRealData's functionality
-    // We'll keep it as a stub for backwards compatibility
+  /// Generate carbon footprint breakdown by category
+  void _generateCarbonBreakdown() {
+    // Reset breakdown data
+    carbonBreakdown.clear();
+    
+    // Early return if no activities
+    if (_homeController.recentActivities.isEmpty) {
+      totalCarbon.value = 0;
+      return;
+    }
+    
+    // Temporary map to store category totals
+    final Map<String, double> categoryTotals = {};
+    double totalEmissions = 0;
+    
+    // Calculate totals by category
+    for (final activity in _homeController.recentActivities) {
+      final category = _determineCategoryFromActivity(activity);
+      final emissions = activity['emissions'] as double?;
+      
+      if (emissions != null && emissions > 0) {
+        categoryTotals[category] = (categoryTotals[category] ?? 0) + emissions;
+        totalEmissions += emissions;
+      }
+    }
+    
+    // Update total carbon value
+    totalCarbon.value = totalEmissions;
+    
+    // If no emissions data, return early
+    if (totalEmissions <= 0) return;
+    
+    // Convert to array format with percentages
+    categoryTotals.forEach((category, value) {
+      final percentage = (value / totalEmissions) * 100;
+      carbonBreakdown.add({
+        'label': category,
+        'value': value,
+        'percentage': percentage,
+      });
+    });
+    
+    // Sort by value (highest to lowest)
+    carbonBreakdown.sort((a, b) => (b['value'] as double).compareTo(a['value'] as double));
   }
-
-  /// Get miles by mode breakdown
-  void _calculateMilesByMode() {
-    // This method is now replaced by _connectToRealData's functionality
-    // We'll keep it as a stub for backwards compatibility
+  
+  /// Determine the category from an activity
+  String _determineCategoryFromActivity(Map<String, dynamic> activity) {
+    final type = activity['type']?.toLowerCase() ?? '';
+    
+    // Transportation categories
+    if (type.contains('car') || 
+        type.contains('drive') || 
+        type.contains('vehicle')) {
+      return 'Car Travel';
+    }
+    
+    if (type.contains('flight') || 
+        type.contains('air') || 
+        type.contains('plane')) {
+      return 'Air Travel';
+    }
+    
+    if (type.contains('public') || 
+        type.contains('transit') || 
+        type.contains('bus') || 
+        type.contains('train') || 
+        type.contains('subway')) {
+      return 'Public Transit';
+    }
+    
+    if (type.contains('bike') || 
+        type.contains('walk') || 
+        type.contains('scoot')) {
+      return 'Zero-Emission Travel';
+    }
+    
+    // Energy categories
+    if (type.contains('electricity') || 
+        type.contains('power') || 
+        type.contains('electric')) {
+      return 'Electricity';
+    }
+    
+    if (type.contains('heat') || 
+        type.contains('gas') || 
+        type.contains('oil') || 
+        type.contains('fuel')) {
+      return 'Heating';
+    }
+    
+    if (type.contains('appliance') || 
+        type.contains('device') || 
+        type.contains('electronics')) {
+      return 'Appliances';
+    }
+    
+    // Food categories
+    if (type.contains('meat') || 
+        type.contains('beef') || 
+        type.contains('pork') || 
+        type.contains('chicken')) {
+      return 'Meat Consumption';
+    }
+    
+    if (type.contains('dairy') || 
+        type.contains('milk') || 
+        type.contains('cheese')) {
+      return 'Dairy Products';
+    }
+    
+    if (type.contains('food') || 
+        type.contains('meal') || 
+        type.contains('eat') || 
+        type.contains('vegetable') || 
+        type.contains('fruit')) {
+      return 'Food';
+    }
+    
+    // Other categories
+    if (type.contains('waste') || 
+        type.contains('recycl') || 
+        type.contains('trash')) {
+      return 'Waste';
+    }
+    
+    if (type.contains('water') || 
+        type.contains('shower')) {
+      return 'Water Usage';
+    }
+    
+    // Generic categories based on input type
+    if (activity['emissions'] != null && activity['emissions'] > 0) {
+      if (type.contains('transport')) {
+        return 'Transportation';
+      } else if (type.contains('energy')) {
+        return 'Energy';
+      } else {
+        return 'Other';
+      }
+    }
+    
+    // Default category
+    return 'Uncategorized';
+  }
+  
+  /// Generate miles by transportation mode data
+  void _generateMilesByMode() {
+    // Reset miles data
+    milesByMode.clear();
+    
+    // Early return if no activities
+    if (_homeController.recentActivities.isEmpty) {
+      totalMiles.value = 0;
+      return;
+    }
+    
+    // Temporary map to store miles by mode
+    final Map<String, double> modeToMiles = {};
+    double totalMilesValue = 0;
+    
+    // Calculate miles for transportation activities
+    for (final activity in _homeController.recentActivities) {
+      final type = (activity['type'] as String?)?.toLowerCase() ?? '';
+      
+      // Only process transportation-related activities
+      if (!type.contains('transport') && !_isTransportationCategory(activity)) {
+        continue;
+      }
+      
+      // Determine transportation mode
+      final mode = _determineTransportMode(activity);
+      
+      // Check for actual miles data first
+      double miles = 0;
+      if (activity.containsKey('miles')) {
+        // Use actual miles from activity data
+        miles = (activity['miles'] as num).toDouble();
+      } else {
+        // Fall back to estimation if miles not available
+        final emissions = (activity['emissions'] as num?)?.toDouble() ?? 0.0;
+        miles = _calculateMilesFromEmissions(emissions, mode);
+      }
+      
+      // Skip if no miles
+      if (miles <= 0) continue;
+      
+      // Add to miles totals
+      modeToMiles[mode] = (modeToMiles[mode] ?? 0.0) + miles;
+      totalMilesValue += miles;
+    }
+    
+    // Update total miles
+    totalMiles.value = totalMilesValue;
+    
+    // If no data, return early
+    if (totalMilesValue <= 0) return;
+    
+    // Convert to array format with percentages
+    modeToMiles.forEach((mode, miles) {
+      final percentage = (miles / totalMilesValue) * 100;
+      milesByMode.add({
+        'label': mode,
+        'value': miles,
+        'percentage': percentage,
+      });
+    });
+    
+    // Sort by value (highest to lowest)
+    milesByMode.sort((a, b) => (b['value'] as double).compareTo(a['value'] as double));
+  }
+  
+  /// Check if activity is a transportation category
+  bool _isTransportationCategory(Map<String, dynamic> activity) {
+    final type = (activity['type'] as String?)?.toLowerCase() ?? '';
+    final subType = (activity['subType'] as String?)?.toLowerCase() ?? '';
+    
+    return type.contains('car') || 
+           type.contains('bus') || 
+           type.contains('train') || 
+           type.contains('walk') || 
+           type.contains('bike') || 
+           type.contains('flight') || 
+           type.contains('scooter') ||
+           subType.contains('car') || 
+           subType.contains('bus') || 
+           subType.contains('train') || 
+           subType.contains('walk') || 
+           subType.contains('bike') || 
+           subType.contains('flight') || 
+           subType.contains('scooter');
+  }
+  
+  /// Determine transportation mode from activity
+  String _determineTransportMode(Map<String, dynamic> activity) {
+    final type = (activity['type'] as String?)?.toLowerCase() ?? '';
+    final subType = (activity['subType'] as String?)?.toLowerCase() ?? '';
+    print('type: $type');
+    print('subType: $subType');
+    
+    // Check for specific transportation types
+    if (type.contains('car') || 
+        type.contains('drive') || 
+        subType.contains('car') || 
+        subType.contains('drive')) {
+      return 'Car';
+    }
+    
+    if (type.contains('bus') || 
+        type.contains('train') || 
+        type.contains('subway') || 
+        type.contains('public') || 
+        type.contains('transit') ||
+        subType.contains('bus') || 
+        subType.contains('train') || 
+        subType.contains('subway') || 
+        subType.contains('public') || 
+        subType.contains('transit')) {
+      return 'Public Transit';
+    }
+    
+    if (type.contains('walk') || 
+        subType.contains('walk')) {
+      return 'Walking';
+    }
+    
+    if (type.contains('bike') || 
+        type.contains('bicycle') || 
+        subType.contains('bike') || 
+        subType.contains('bicycle')) {
+      return 'Bicycle';
+    }
+    
+    if (type.contains('flight') || 
+        type.contains('plane') || 
+        type.contains('air') || 
+        subType.contains('flight') || 
+        subType.contains('plane') || 
+        subType.contains('air')) {
+      return 'Air Travel';
+    }
+    
+    // Default category
+    return 'Other';
+  }
+  
+  /// Calculate estimated miles from emissions based on transportation mode
+  double _calculateMilesFromEmissions(double emissions, String mode) {
+    // Handle zero-emission modes specially
+    if (mode == 'Walking' || mode == 'Bicycle') {
+      // For zero-emission modes, we'll use a default value of 2 miles
+      // even if the emissions are 0
+      return 2.0;
+    }
+    
+    // If emissions are 0 and it's not a zero-emission mode, return 0
+    if (emissions <= 0) return 0;
+    
+    // Calculate miles based on mode-specific emission factors
+    switch (mode) {
+      case 'Car':
+        // Emissions (lbs) / 0.9 lbs per mile (average car)
+        return emissions / 0.9;
+      case 'Public Transit':
+        // Emissions (lbs) / 0.3 lbs per mile (average bus/train)
+        return emissions / 0.3;
+      case 'Air Travel':
+        // Emissions (lbs) / 1.5 lbs per mile (average flight)
+        return emissions / 1.5;
+      default:
+        // Default: Emissions (lbs) / 0.7 lbs per mile
+        return emissions / 0.7;
+    }
   }
 }

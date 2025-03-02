@@ -301,13 +301,18 @@ class SetupController extends GetxController {
   // Apply the setup data to the home controller
   void _applySetupDataToHomeController() {
     final setupDataValue = setupData.value;
-    // final currentFootprint = setupDataValue.estimateFootprint();
-    // final targetFootprint = setupDataValue.selectedGoalLevel.weeklyBudgetGoal;
     
+    // Calculate total carbon footprint and update setup data
+    double totalFootprint = CarbonCalculatorService.calculateTotalFootprint(setupDataValue);
+    setupData.value = setupDataValue.copyWith(calculatedCarbonFootprint: totalFootprint);
+    
+    print('Total calculated carbon footprint: $totalFootprint lbs/month');
+    
+    // Set user data in home controller with updated setup data that includes calculated footprint
     _homeController.setUserData(
       name: setupDataValue.userName,
       goalLevel: setupDataValue.selectedGoalLevel,
-      setupData: setupDataValue,
+      setupData: setupData.value,
     );
     
     // Navigation is handled by the calling method

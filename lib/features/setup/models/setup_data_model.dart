@@ -102,17 +102,27 @@ class TransportationMethod {
     this.publicTransportType,
   });
   
-  /// Calculate weekly emissions in kg CO2
+  /// Calculate weekly emissions in lbs CO2
   double calculateWeeklyEmissions() {
     switch (mode) {
       case TransportMode.walking:
       case TransportMode.bicycle:
-      case TransportMode.publicTransportation:
         // Zero emissions for these modes
         return 0.0;
       
+      case TransportMode.publicTransportation:
+        // Different emissions for bus vs train
+        if (publicTransportType == PublicTransportType.bus) {
+          // Bus emissions: ~0.11 lbs CO2 per passenger-mile
+          return milesPerWeek * 0.11;
+        } else if (publicTransportType == PublicTransportType.train) {
+          // Train emissions: ~0.07 lbs CO2 per passenger-mile
+          return milesPerWeek * 0.07;
+        }
+        return 0.0;
+      
       case TransportMode.car:
-        // For electric cars, emissions are 0
+        // For electric cars, emissions are minimal
         if (carType == CarType.electric) {
           return 0.0;
         }
@@ -125,12 +135,12 @@ class TransportationMethod {
           effectiveMpg *= carpoolSize!.toDouble();
         }
         
-        // lbs CO2 per gallon of gasoline is 19.16 lbs CO2
-        return (milesPerWeek / effectiveMpg) * 19.16;
+        // lbs CO2 per gallon of gasoline is 19.6 lbs CO2
+        return (milesPerWeek / effectiveMpg) * 19.6;
       
       case TransportMode.airplane:
-        // Airplanes emit about 0.2 lbs CO2 per passenger-mile
-        return milesPerWeek * 0.2;
+        // Airplanes emit about 0.55 lbs CO2 per passenger-mile
+        return milesPerWeek * 0.55;
     }
   }
 }
@@ -283,8 +293,8 @@ extension CarbonGoalLevelExt on CarbonGoalLevel {
   }
 
   double get weeklyBudgetGoal {
-    // Get average weekly carbon budget
-    double averageWeekly = 40.0; // Average weekly emissions in kg CO2
+    // Get average weekly carbon budget in pounds
+    double averageWeekly = 175.0; // Average weekly emissions in lbs CO2 (~80 kg * 2.20462)
     
     switch (this) {
       case CarbonGoalLevel.minimal:

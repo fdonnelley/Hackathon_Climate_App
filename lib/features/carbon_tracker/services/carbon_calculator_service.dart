@@ -5,21 +5,21 @@ class CarbonCalculatorService {
   // Constants for emissions calculations
   
   // Energy emissions factors
-  static const double _electricityEmissionFactor = 0.48; // kg CO2 per kWh
+  static const double _electricityEmissionFactor = 1.06; // lbs CO2 per kWh
   static const double _averageElectricityPrice = 0.15; // $ per kWh
-  static const double _gasEmissionFactor = 5.5; // kg CO2 per therm
+  static const double _gasEmissionFactor = 12.13; // lbs CO2 per therm
   static const double _averageGasPrice = 1.5; // $ per therm
   
   // Transportation emissions factors
-  static const double _gasolineEmissionFactor = 8.89; // kg CO2 per gallon
-  static const double _airplaneEmissionFactor = 0.25; // kg CO2 per passenger-mile
-  static const double _busEmissionFactor = 0.05; // kg CO2 per passenger-mile
-  static const double _trainEmissionFactor = 0.03; // kg CO2 per passenger-mile
+  static const double _gasolineEmissionFactor = 19.6; // lbs CO2 per gallon
+  static const double _airplaneEmissionFactor = 0.55; // lbs CO2 per passenger-mile
+  static const double _busEmissionFactor = 0.11; // lbs CO2 per passenger-mile
+  static const double _trainEmissionFactor = 0.07; // lbs CO2 per passenger-mile
   
   // Weeks in a month for conversion
   static const double _weeksPerMonth = 4.33;
   
-  /// Calculate total carbon footprint from all sources (monthly in kg CO2)
+  /// Calculate total carbon footprint from all sources (monthly in lbs CO2)
   static double calculateTotalFootprint(SetupDataModel data) {
     double transportationEmissions = calculateTransportationEmissions(data.transportationMethods);
     double electricityEmissions = calculateElectricityEmissions(data.monthlyElectricBill);
@@ -28,7 +28,7 @@ class CarbonCalculatorService {
     return transportationEmissions + electricityEmissions + gasEmissions;
   }
   
-  /// Calculate transportation emissions (monthly in kg CO2)
+  /// Calculate transportation emissions (monthly in lbs CO2)
   static double calculateTransportationEmissions(List<TransportationMethod> methods) {
     double weeklyEmissions = 0;
     
@@ -41,7 +41,7 @@ class CarbonCalculatorService {
     return weeklyEmissions * _weeksPerMonth;
   }
   
-  /// Calculate emissions for a single transportation method (weekly in kg CO2)
+  /// Calculate emissions for a single transportation method (weekly in lbs CO2)
   static double calculateSingleTransportEmissions(TransportationMethod method) {
     switch (method.mode) {
       case TransportMode.walking:
@@ -74,7 +74,7 @@ class CarbonCalculatorService {
           effectiveMpg *= method.carpoolSize!.toDouble();
         }
         
-        // kg CO2 = (miles / mpg) * emission factor per gallon
+        // lbs CO2 = (miles / mpg) * emission factor per gallon
         return (method.milesPerWeek / effectiveMpg) * _gasolineEmissionFactor;
       
       case TransportMode.airplane:
@@ -83,7 +83,7 @@ class CarbonCalculatorService {
     }
   }
   
-  /// Calculate electricity emissions (monthly in kg CO2)
+  /// Calculate electricity emissions (monthly in lbs CO2)
   static double calculateElectricityEmissions(double monthlyBill, [double? averageBill]) {
     // If bill is 0 or not provided, use average if provided
     if (monthlyBill <= 0 && averageBill != null) {
@@ -94,7 +94,7 @@ class CarbonCalculatorService {
     return monthlyBill / _averageElectricityPrice * _electricityEmissionFactor;
   }
   
-  /// Calculate natural gas emissions (monthly in kg CO2)
+  /// Calculate natural gas emissions (monthly in lbs CO2)
   static double calculateGasEmissions(double monthlyBill, [double? averageBill]) {
     // If bill is 0 or not provided, use average if provided
     if (monthlyBill <= 0 && averageBill != null) {
@@ -105,7 +105,7 @@ class CarbonCalculatorService {
     return monthlyBill / _averageGasPrice * _gasEmissionFactor;
   }
   
-  /// Calculate average monthly carbon footprint for a typical household (in kg CO2)
+  /// Calculate average monthly carbon footprint for a typical household (in lbs CO2)
   static double calculateAverageFootprint() {
     // Average monthly electric bill: $120
     double avgElectricityEmissions = calculateElectricityEmissions(120);
@@ -129,7 +129,7 @@ class CarbonCalculatorService {
     return weeklyEmissions * _weeksPerMonth;
   }
   
-  /// Calculate carbon savings from a specific action (in kg CO2)
+  /// Calculate carbon savings from a specific action (in lbs CO2)
   static double calculateActionSavings(CarbonSavingAction action) {
     switch (action) {
       case CarbonSavingAction.reduceDriving:

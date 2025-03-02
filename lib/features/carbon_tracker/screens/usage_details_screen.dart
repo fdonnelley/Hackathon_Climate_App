@@ -296,18 +296,53 @@ class UsageDetailsScreen extends StatelessWidget {
                         itemCount: activities.length.clamp(0, 5), // Show at most 5
                         itemBuilder: (context, index) {
                           final activity = activities[index];
-                          return ListTile(
-                            leading: Icon(
-                              _getIconData(activity['icon']),
-                              color: theme.colorScheme.primary,
-                            ),
-                            title: Text(activity['title']),
-                            subtitle: Text(
-                              '${EmissionsUtils.formatPounds(EmissionsUtils.kgToPounds(activity['emissions']))} lbs CO₂e',
-                            ),
-                            trailing: Text(
-                              _formatDate(activity['timestamp']),
-                              style: theme.textTheme.bodySmall,
+                          final type = activity['type'] as String? ?? '';
+                          
+                          // Build additional details text
+                          String detailsText = '';
+                          if (type == 'transportation' && activity['miles'] != null) {
+                            detailsText = '${(activity['miles'] as double).toStringAsFixed(1)} miles';
+                            
+                            if (activity['mpg'] != null) {
+                              detailsText += ' • ${(activity['mpg'] as double).toStringAsFixed(1)} mpg';
+                            }
+                          } else if (type == 'energy' && activity['billAmount'] != null) {
+                            final subType = activity['subType'] as String? ?? '';
+                            detailsText = '\$${(activity['billAmount'] as double).toStringAsFixed(0)} ${subType.isNotEmpty ? subType : ''} bill';
+                          }
+                          
+                          return Card(
+                            margin: const EdgeInsets.only(bottom: 8),
+                            child: ListTile(
+                              leading: Icon(
+                                _getIconData(activity['icon']),
+                                color: theme.colorScheme.primary,
+                                size: 28,
+                              ),
+                              title: Text(activity['title']),
+                              subtitle: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    '${EmissionsUtils.formatPounds(activity['emissions'] as double)} lbs CO₂e',
+                                    style: TextStyle(
+                                      color: _getEmissionsColor(activity['emissions'] as double),
+                                      fontWeight: FontWeight.w500,
+                                    ),
+                                  ),
+                                  if (detailsText.isNotEmpty)
+                                    Text(
+                                      detailsText,
+                                      style: theme.textTheme.bodySmall?.copyWith(
+                                        color: Colors.grey.shade700,
+                                      ),
+                                    ),
+                                ],
+                              ),
+                              trailing: Text(
+                                _formatDate(activity['timestamp']),
+                                style: theme.textTheme.bodySmall,
+                              ),
                             ),
                           );
                         },
@@ -495,6 +530,17 @@ class UsageDetailsScreen extends StatelessWidget {
         return Icons.shopping_bag;
       default:
         return Icons.eco;
+    }
+  }
+  
+  // Get color for emissions
+  Color _getEmissionsColor(double emissions) {
+    if (emissions <= 0.01) {
+      return Colors.green;
+    } else if (emissions <= 5.0) {
+      return Colors.amber;
+    } else {
+      return Colors.red;
     }
   }
 }

@@ -11,6 +11,11 @@ import '../../chatbot/controllers/chatbot_controller.dart';
 import '../controllers/home_controller.dart';
 import '../widgets/feature_card.dart';
 
+/// Extension to capitalize the first letter of a string
+extension StringExtension on String {
+  String get capitalize => isNotEmpty ? '${this[0].toUpperCase()}${substring(1)}' : this;
+}
+
 /// Home screen for Carbon Budget Tracker
 class HomeScreen extends StatelessWidget {
   /// Route name
@@ -444,7 +449,7 @@ class HomeScreen extends StatelessWidget {
                             Text(
                               '+${EmissionsUtils.formatPounds(activity['emissions'] as double)} lbs',
                               style: theme.textTheme.titleSmall?.copyWith(
-                                color: theme.colorScheme.error,
+                                color: _getEmissionsColor(activity['emissions'] as double),
                                 fontWeight: FontWeight.bold,
                               ),
                             ),
@@ -511,14 +516,52 @@ class HomeScreen extends StatelessWidget {
   }
   
   String _getActivityDescription(Map<String, dynamic> activity) {
-    switch (activity['type']) {
-      case 'transport':
-        return 'Transport activity';
-      case 'energy':
-        return 'Energy consumption';
+    final type = activity['type'] as String? ?? '';
+    final subType = activity['subType'] as String? ?? '';
+    
+    // Show miles for transportation activities
+    if (type == 'transportation') {
+      final miles = activity['miles'] as double?;
+      if (miles != null) {
+        return '${miles.toStringAsFixed(1)} miles';
+      }
+      
+      final mode = activity['title'] as String? ?? 'Transport';
+      return mode;
+    }
+    
+    // Show bill amount for energy activities
+    if (type == 'energy') {
+      final billAmount = activity['billAmount'] as double?;
+      if (billAmount != null) {
+        return '\$${billAmount.toStringAsFixed(0)} ${_capitalize(subType)} bill';
+      }
+      
+      if (subType.isNotEmpty) {
+        return '${_capitalize(subType)} energy usage';
+      }
+      return 'Energy consumption';
+    }
+    
+    // Use the subtype if available
+    if (subType.isNotEmpty) {
+      return _capitalize(subType);
+    }
+    
+    // Fallback for other activity types
+    switch (type) {
+      case 'food':
+        return 'Food consumption';
+      case 'waste':
+        return 'Waste disposal';
       default:
         return 'Carbon footprint activity';
     }
+  }
+  
+  String _capitalize(String text) {
+    if (text.isEmpty) return text;
+    return text[0].toUpperCase() + text.substring(1);
   }
   
   String _getTimeAgo(dynamic timestamp) {
@@ -536,6 +579,16 @@ class HomeScreen extends StatelessWidget {
       return '${difference.inMinutes} minutes ago';
     } else {
       return 'Just now';
+    }
+  }
+  
+  Color _getEmissionsColor(double emissions) {
+    if (emissions <= 0.01) {
+      return Colors.green; // Zero or very low emissions (green)
+    } else if (emissions < 5.0) {
+      return Colors.amber; // Medium emissions (yellow/amber)
+    } else {
+      return Theme.of(Get.context!).colorScheme.error; // High emissions (red)
     }
   }
   
@@ -584,16 +637,45 @@ class HomeScreen extends StatelessWidget {
   
   IconData _getIconData(String iconName) {
     switch (iconName) {
+      // Transportation icons
       case 'directions_bus':
         return Icons.directions_bus;
       case 'directions_car':
         return Icons.directions_car;
+      case 'directions_bike':
+        return Icons.directions_bike;
+      case 'directions_walk':
+        return Icons.directions_walk;
+      case 'flight':
+        return Icons.flight;
+      case 'train':
+        return Icons.train;
+      case 'subway':
+        return Icons.subway;
+      
+      // Energy icons
       case 'bolt':
         return Icons.bolt;
       case 'electrical_services':
         return Icons.electrical_services;
-      case 'directions_bike':
-        return Icons.directions_bike;
+      case 'local_fire_department':
+        return Icons.local_fire_department;
+      case 'propane_tank':
+        return Icons.propane_tank;
+      
+      // Food icons
+      case 'restaurant':
+        return Icons.restaurant;
+      case 'lunch_dining':
+        return Icons.lunch_dining;
+      
+      // Waste icons
+      case 'delete':
+        return Icons.delete;
+      case 'recycling':
+        return Icons.recycling;
+      
+      // Default icon when nothing else matches
       default:
         return Icons.eco;
     }

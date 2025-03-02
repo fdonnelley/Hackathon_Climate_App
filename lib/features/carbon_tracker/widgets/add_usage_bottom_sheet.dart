@@ -779,11 +779,23 @@ class _AddUsageBottomSheetState extends State<AddUsageBottomSheet> {
         carpoolSize: _selectedCarUsageType.value == CarUsageType.carpool ? _selectedCarpoolSize.value : null,
       );
       
+      // Get a descriptive title for the transport method
+      final title = _getTransportTitle(transportMethod);
+      
       // Calculate emissions in pounds
       co2Emissions = _calculateTransportEmissions(transportMethod);
       
-      // Add to tracker (directly in pounds)
-      _homeController.addCarbonUsage(co2Emissions, 'transportation');
+      // Add to tracker (directly in pounds) - storing miles in the activity
+      _homeController.addCarbonUsage(
+        co2Emissions, 
+        'transportation',
+        specificMode: title,
+        additionalData: {
+          'miles': miles,
+          'mpg': transportMethod.mpg,
+          'transportMode': transportMethod.mode.name,
+        }
+      );
       
       // Show success message
       Get.back();
@@ -802,15 +814,51 @@ class _AddUsageBottomSheetState extends State<AddUsageBottomSheet> {
       final electricBill = double.tryParse(electricText) ?? 0;
       final gasBill = double.tryParse(gasText) ?? 0;
       
-      // Calculate CO2 emissions in pounds
-      double co2Emissions = _calculateEnergyEmissions(electricBill, gasBill);
+      // Instead of combining, add separate entries for electricity and gas
+      if (electricBill > 0) {
+        // Calculate CO2 emissions for electricity in pounds
+        double electricEmissions = electricBill * 0.92; // Simple calculation for demo
+        
+        // Add electricity usage separately
+        _homeController.addCarbonUsage(
+          electricEmissions, 
+          'energy',
+          subType: 'electricity',
+          additionalData: {
+            'billAmount': electricBill,
+          }
+        );
+      }
       
-      // Add to tracker (directly in pounds)
-      _homeController.addCarbonUsage(co2Emissions, 'energy');
+      if (gasBill > 0) {
+        // Calculate CO2 emissions for gas in pounds
+        double gasEmissions = gasBill * 0.84; // Simple calculation for demo
+        
+        // Add gas usage separately
+        _homeController.addCarbonUsage(
+          gasEmissions, 
+          'energy',
+          subType: 'gas',
+          additionalData: {
+            'billAmount': gasBill,
+          }
+        );
+      }
       
-      // Show success message
+      // Show success message and close sheet
       Get.back();
-      _showSuccess('Added energy usage');
+      
+      // Create appropriate success message
+      String message = '';
+      if (electricBill > 0 && gasBill > 0) {
+        message = 'Added electricity and gas usage';
+      } else if (electricBill > 0) {
+        message = 'Added electricity usage';
+      } else if (gasBill > 0) {
+        message = 'Added gas usage';
+      }
+      
+      _showSuccess(message);
     }
   }
   

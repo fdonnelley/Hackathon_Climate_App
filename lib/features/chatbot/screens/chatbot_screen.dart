@@ -29,9 +29,13 @@ class _ChatbotScreenState extends State<ChatbotScreen> {
   void initState() {
     super.initState();
     // Make sure we have a ChatbotController instance
-    if (!Get.isRegistered<ChatbotController>()) {
-      Get.put(ChatbotController(), permanent: true);
+    if (Get.isRegistered<ChatbotController>()) {
+      // Remove any existing controller to ensure we get a fresh instance
+      Get.delete<ChatbotController>();
     }
+    
+    // Create a new instance of the controller
+    Get.put(ChatbotController(), permanent: true);
     _chatbotController = Get.find<ChatbotController>();
     
     // Add a system message with carbon info
@@ -43,9 +47,12 @@ class _ChatbotScreenState extends State<ChatbotScreen> {
   }
   
   void _addCarbonInfoMessage() {
-    _chatbotController.messages.add(ChatMessage.system(
-      'I can help you understand your carbon emissions and suggest ways to reduce your footprint. Try asking about your current carbon usage or for specific tips to reduce emissions from transportation, home energy, and more.'
-    ));
+    _chatbotController.messages.add({
+      'id': DateTime.now().millisecondsSinceEpoch.toString(),
+      'text': 'I can help you understand your carbon emissions and suggest ways to reduce your footprint. Try asking about your current carbon usage or for specific tips to reduce emissions from transportation, home energy, and more.',
+      'isUser': false,
+      'timestamp': DateTime.now(),
+    });
   }
   
   @override
@@ -112,7 +119,7 @@ class _ChatbotScreenState extends State<ChatbotScreen> {
       body: Column(
         children: [
           // Carbon status card
-          Obx(() => _buildCarbonStatusCard()),
+          // Obx(() => _buildCarbonStatusCard()),
           
           // Chat messages
           Expanded(
@@ -127,8 +134,8 @@ class _ChatbotScreenState extends State<ChatbotScreen> {
                   
                   return ChatBubble(
                     message: message,
-                    isCurrentUser: message.sender == MessageSender.user,
-                    isSystemMessage: message.sender == MessageSender.system,
+                    isCurrentUser: message['isUser'],
+                    isSystemMessage: !message['isUser'],
                   );
                 },
               );

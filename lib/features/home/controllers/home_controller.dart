@@ -56,25 +56,44 @@ class HomeController extends GetxController {
     userName.value = name;
     this.goalLevel.value = goalLevel;
     
-    // Set emissions to zero (user is just starting)
+    // Set emissions to zero initially
     weeklyEmissions.value = 0.0;
     monthlyEmissions.value = 0.0;
     dailyEmissions.value = 0.0;
     
-    // Set budgets based on selected goal level
+    // Set budgets based on selected goal level (already in pounds)
     weeklyBudget.value = goalLevel.weeklyBudgetGoal;
     
     // Calculate monthly budget (weekly * 4.33)
     monthlyBudget.value = weeklyBudget.value * 4.33;
     
-    // Calculate daily budget (weekly / 7) and convert to pounds
+    // Calculate daily budget (weekly / 7)
     dailyBudget.value = (weeklyBudget.value / 7);
     
     // Set tracking start date to today
     trackingStartDate.value = DateTime.now();
     
-    // Reset usage percentage
-    weeklyUsagePercentage.value = 0.0;
+    // If we have setup data with a calculated footprint, set initial weekly emissions
+    // if (setupData != null && setupData.calculatedCarbonFootprint > 0) {
+    //   // Setup data's footprint is monthly in kg - convert to weekly in pounds
+    //   final conversionFactor = 2.20462; // kg to lbs
+      
+    //   // Monthly kg -> Weekly pounds
+    //   weeklyEmissions.value = (setupData.calculatedCarbonFootprint * conversionFactor) / 4.33;
+      
+    //   // Weekly -> Monthly
+    //   monthlyEmissions.value = weeklyEmissions.value * 4.33;
+      
+    //   // Weekly -> Daily 
+    //   dailyEmissions.value = weeklyEmissions.value / 7.0;
+      
+    //   // Calculate usage percentage
+    //   weeklyUsagePercentage.value = (weeklyEmissions.value / weeklyBudget.value) * 100;
+      
+    //   print('Initial weekly emissions: ${weeklyEmissions.value} lbs');
+    //   print('Initial weekly budget: ${weeklyBudget.value} lbs');
+    //   print('Initial weekly usage percentage: ${weeklyUsagePercentage.value}%');
+    // }
     
     // Clear sample activities
     recentActivities.clear();
@@ -96,6 +115,9 @@ class HomeController extends GetxController {
         }
       }
     }
+    
+    // Update UI
+    update(['carbon_usage', 'recent_activities']);
   }
   
   /// Add new emissions activity and update totals
@@ -289,17 +311,79 @@ class HomeController extends GetxController {
       getActivitiesByType('energy', subType: 'gas');
   
   /// Add carbon usage to the tracker
-  void addCarbonUsage(double emissions, String type) {
+  void addCarbonUsage(double emissions, String type, {
+    String? specificMode, 
+    String? subType,
+    Map<String, dynamic>? additionalData,
+  }) {
+    // Create a more descriptive title based on the type and specificMode
+    String title;
+    String icon;
+    
+    if (type == 'transportation') {
+      title = specificMode != null ? '$specificMode' : 'Transportation';
+      
+      // Select appropriate icon based on mode
+      if (specificMode != null) {
+        if (specificMode.toLowerCase().contains('car')) {
+          icon = 'directions_car';
+        } else if (specificMode.toLowerCase().contains('bus') || 
+                  specificMode.toLowerCase().contains('transit')) {
+          icon = 'directions_bus';
+        } else if (specificMode.toLowerCase().contains('bike') || 
+                  specificMode.toLowerCase().contains('bicycle')) {
+          icon = 'directions_bike';
+        } else if (specificMode.toLowerCase().contains('walk')) {
+          icon = 'directions_walk';
+        } else if (specificMode.toLowerCase().contains('train') || 
+                  specificMode.toLowerCase().contains('subway')) {
+          icon = 'train';
+        } else if (specificMode.toLowerCase().contains('plane') || 
+                  specificMode.toLowerCase().contains('air')) {
+          icon = 'flight';
+        } else {
+          icon = 'directions_car'; // Default transportation icon
+        }
+      } else {
+        icon = 'directions_car';
+      }
+    } else if (type == 'energy') {
+      if (subType == 'electricity') {
+        title = 'Electricity Usage';
+        icon = 'bolt';
+      } else if (subType == 'gas') {
+        title = 'Natural Gas Usage';
+        icon = 'local_fire_department';
+      } else {
+        title = 'Energy Usage';
+        icon = 'bolt';
+      }
+    } else if (type == 'food') {
+      title = 'Food Consumption';
+      icon = 'restaurant';
+    } else if (type == 'waste') {
+      title = 'Waste Disposal';
+      icon = 'delete';
+    } else {
+      // Generic fallback
+      title = 'Carbon Usage';
+      icon = 'eco';
+    }
+    
     // Store emissions in pounds internally
     final usage = {
       'timestamp': DateTime.now().millisecondsSinceEpoch,
       'emissions': emissions, // pounds CO2e
       'type': type,
-      'title': type == 'transportation'
-          ? 'Transportation Usage'
-          : 'Energy Usage',
-      'icon': type == 'transportation' ? 'directions_car' : 'bolt',
+      'subType': subType,
+      'title': title,
+      'icon': icon,
     };
+    
+    // Add any additional data if provided
+    if (additionalData != null && additionalData.isNotEmpty) {
+      usage.addAll(additionalData);
+    }
     
     // Update running totals
     dailyEmissions.value += emissions;

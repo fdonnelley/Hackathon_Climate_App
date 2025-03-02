@@ -15,10 +15,36 @@ abstract class ChatService {
   /// [systemPrompt] is an optional system prompt to override the default
   Future<String> generateResponse(
     String message, 
-    List<ChatMessage> conversationHistory, {
+    List<Map<String, dynamic>> conversationHistory, {
     String? systemPrompt,
   });
 
   /// Clean up resources
   Future<void> dispose();
+}
+
+/// Default implementation using Groq
+class DefaultChatService implements ChatService {
+  /// Get the name of the provider
+  @override
+  String get providerName => 'Groq';
+
+  /// Initialize the service
+  @override
+  Future<void> initialize() async {}
+
+  /// Generate a response to a message
+  @override
+  Future<String> generateResponse(
+    String message, 
+    List<Map<String, dynamic>> conversationHistory, {
+    String? systemPrompt,
+  }) async {
+    // Use a default response if no implementation is provided
+    return "I'm sorry, I couldn't process your request at this time.";
+  }
+  
+  /// Release resources
+  @override
+  Future<void> dispose() async {}
 }
