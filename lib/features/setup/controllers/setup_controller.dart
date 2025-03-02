@@ -40,7 +40,7 @@ class SetupController extends GetxController {
   final carpoolSize = 2.obs;
   
   // Average transportation mileage per week value
-  final double averageCarMileage = 250.0;
+  final double averageCarMileage = 100.0;
   final double averageWalkingMileage = 2.0;
   final double averageBicycleMileage = 10.0;
   final double averageBusMileage = 40.0;

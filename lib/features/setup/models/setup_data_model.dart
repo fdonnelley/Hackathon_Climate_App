@@ -5,11 +5,11 @@ import '../../../features/carbon_tracker/services/carbon_calculator_service.dart
 /// Model to store setup data collected during the initial setup flow
 class SetupDataModel {
   // Emission factors
-  static const double electricityEmissionFactor = 0.92; // lb CO2 per kWh
-  static const double averageElectricityPrice = 0.15; // $ per kWh
-  static const double gasEmissionFactor = 11.7; // lb CO2 per therm
+  static const double electricityEmissionFactor = 0.75; // lb CO2 per kWh
+  static const double averageElectricityPrice = 0.16; // $ per kWh
+  static const double gasEmissionFactor = 8.0; // lb CO2 per therm
   static const double averageGasPrice = 1.5; // $ per therm
-  static const double gasolineEmissionFactor = 19.6; // lb CO2 per gallon
+  static const double gasolineEmissionFactor = 15.0; // lb CO2 per gallon
   static const double airplaneEmissionFactor = 0.2; // lb CO2 per passenger-mile
   static const double busEmissionFactor = 0.45; // lb CO2 per passenger-mile
   static const double trainEmissionFactor = 0.22; // lb CO2 per passenger-mile
