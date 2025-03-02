@@ -38,12 +38,14 @@ class ChatbotController extends GetxController {
   HomeController get homeController => _homeController;
   
   @override
-  void onInit() {
+  void onInit() async {
     super.onInit();
-    _initializeServices();
     
-    // Load saved messages first
-    _loadMessages();
+    // Initialize required services
+    await _initializeServices();
+    
+    // Try to load saved messages
+    await _loadMessages();
     
     // Only add welcome message if no messages were loaded
     if (messages.isEmpty) {
@@ -53,6 +55,9 @@ class ChatbotController extends GetxController {
         'isUser': false,
         'timestamp': DateTime.now(),
       });
+      
+      // Save the welcome message
+      await _saveMessages();
     }
   }
   
@@ -225,7 +230,6 @@ class ChatbotController extends GetxController {
       // Build context
       carbonContext.value = '''
 Carbon budget status:
-<<<<<<< HEAD
 - Daily: ${dailyEmissions.toStringAsFixed(1)} lbs / ${dailyBudget.toStringAsFixed(1)} lbs ($dailyPercentage%)
 - Weekly: ${weeklyEmissions.toStringAsFixed(1)} lbs / ${weeklyBudget.toStringAsFixed(1)} lbs ($weeklyPercentage%)
 - Monthly: ${monthlyEmissions.toStringAsFixed(1)} lbs / ${monthlyBudget.toStringAsFixed(1)} lbs ($monthlyPercentage%)
@@ -268,7 +272,7 @@ User carbon trend: ${_getCarbonTrend()}
   }
   
   /// Clear all chat messages and add a welcome message
-  void clearChat() {
+  Future<void> clearChat() async {
     messages.clear();
     messages.add({
       'id': DateTime.now().millisecondsSinceEpoch.toString(),
@@ -276,6 +280,9 @@ User carbon trend: ${_getCarbonTrend()}
       'isUser': false,
       'timestamp': DateTime.now(),
     });
+    
+    // Save the cleared chat with welcome message
+    await _saveMessages();
     
     // Update carbon context
     updateCarbonContext();
@@ -293,8 +300,13 @@ User carbon trend: ${_getCarbonTrend()}
     };
 
     messages.add(userMessage);
+    // Save messages to ensure the user message is persisted immediately
+    await _saveMessages();
     update();
 
+    // Set the loading state
+    isLoading.value = true;
+    
     // Add a loading message
     final loadingId = DateTime.now().millisecondsSinceEpoch.toString();
     final loadingMessage = {
@@ -331,7 +343,7 @@ User carbon trend: ${_getCarbonTrend()}
         response = await _generateBotResponse(message);
       }
 
-      // Replace the loading message with the actual response
+      // Remove only the loading message and add the bot response
       messages.removeWhere((msg) => msg['id'] == loadingId);
       
       final botMessage = {
@@ -342,14 +354,14 @@ User carbon trend: ${_getCarbonTrend()}
       };
 
       messages.add(botMessage);
-      update();
       
-      // Save the conversation
-      _saveMessages();
+      // Save the conversation after adding bot's response
+      await _saveMessages();
+      update();
     } catch (e) {
       debugPrint('Error generating response: $e');
       
-      // Replace loading with error
+      // Replace loading with error message, but keep user message
       messages.removeWhere((msg) => msg['id'] == loadingId);
       
       final errorMessage = {
@@ -360,7 +372,11 @@ User carbon trend: ${_getCarbonTrend()}
       };
 
       messages.add(errorMessage);
+      await _saveMessages();
       update();
+    } finally {
+      // Reset loading state
+      isLoading.value = false;
     }
   }
   
@@ -727,7 +743,7 @@ KEY REQUIREMENTS:
   }
   
   /// Save messages to local storage
-  void _saveMessages() {
+  Future<void> _saveMessages() async {
     try {
       // Convert messages to a format that can be stored
       final List<Map<String, dynamic>> serializableMessages = messages.map((message) {
@@ -742,9 +758,11 @@ KEY REQUIREMENTS:
       // Convert to JSON string
       final String messagesJson = jsonEncode(serializableMessages);
       
+      // Get SharedPreferences instance
+      final SharedPreferences prefs = await SharedPreferences.getInstance();
+      
       // Save to shared preferences
-      final prefs = Get.find<SharedPreferences>();
-      prefs.setString('chat_messages', messagesJson);
+      await prefs.setString('chat_messages', messagesJson);
       
       debugPrint('Chat messages saved successfully');
     } catch (e) {
@@ -753,12 +771,14 @@ KEY REQUIREMENTS:
   }
   
   /// Load saved messages from local storage
-  void _loadMessages() {
+  Future<void> _loadMessages() async {
     try {
-      final prefs = Get.find<SharedPreferences>();
+      // Get SharedPreferences instance
+      final SharedPreferences prefs = await SharedPreferences.getInstance();
+      
       final String? messagesJson = prefs.getString('chat_messages');
       
-      if (messagesJson != null) {
+      if (messagesJson != null && messagesJson.isNotEmpty) {
         final List<dynamic> decodedMessages = jsonDecode(messagesJson);
         
         messages.clear();
@@ -779,5 +799,18 @@ KEY REQUIREMENTS:
     } catch (e) {
       debugPrint('Error loading chat messages: $e');
     }
+  }
+  
+  /// Add a system message and save
+  Future<void> addSystemMessage(String text) async {
+    messages.add({
+      'id': DateTime.now().millisecondsSinceEpoch.toString(),
+      'text': text,
+      'isUser': false,
+      'timestamp': DateTime.now(),
+    });
+    
+    await _saveMessages();
+    update();
   }
 }

@@ -46,13 +46,10 @@ class _ChatbotScreenState extends State<ChatbotScreen> {
     });
   }
   
-  void _addCarbonInfoMessage() {
-    _chatbotController.messages.add({
-      'id': DateTime.now().millisecondsSinceEpoch.toString(),
-      'text': 'I can help you understand your carbon emissions and suggest ways to reduce your footprint. Try asking about your current carbon usage or for specific tips to reduce emissions from transportation, home energy, and more.',
-      'isUser': false,
-      'timestamp': DateTime.now(),
-    });
+  void _addCarbonInfoMessage() async {
+    await _chatbotController.addSystemMessage(
+      'I can help you understand your carbon emissions and suggest ways to reduce your footprint. Try asking about your current carbon usage or for specific tips to reduce emissions from transportation, home energy, and more.'
+    );
   }
   
   @override
@@ -75,7 +72,7 @@ class _ChatbotScreenState extends State<ChatbotScreen> {
     });
   }
   
-  void _handleSubmitted(String text) {
+  Future<void> _handleSubmitted(String text) async {
     if (text.trim().isEmpty) return;
     
     _textController.clear();
@@ -100,8 +97,8 @@ class _ChatbotScreenState extends State<ChatbotScreen> {
           IconButton(
             icon: const Icon(Icons.delete_outline),
             tooltip: 'Clear conversation',
-            onPressed: () {
-              _chatbotController.clearChat();
+            onPressed: () async {
+              await _chatbotController.clearChat();
               // Add carbon info message after clearing
               _addCarbonInfoMessage();
             },
@@ -192,14 +189,14 @@ class _ChatbotScreenState extends State<ChatbotScreen> {
                         border: InputBorder.none,
                         hintStyle: TextStyle(color: theme.hintColor),
                       ),
-                      onSubmitted: _handleSubmitted,
+                      onSubmitted: (text) async => await _handleSubmitted(text),
                       textInputAction: TextInputAction.send,
                     ),
                   ),
                   IconButton(
                     icon: const Icon(Icons.send),
                     color: AppColors.primary,
-                    onPressed: () => _handleSubmitted(_textController.text),
+                    onPressed: () async => await _handleSubmitted(_textController.text),
                   ),
                 ],
               ),
@@ -426,10 +423,10 @@ class _ChatbotScreenState extends State<ChatbotScreen> {
     return Card(
       margin: const EdgeInsets.symmetric(vertical: 4),
       child: InkWell(
-        onTap: () {
+        onTap: () async {
           Navigator.pop(context);
           _textController.text = question;
-          _handleSubmitted(question);
+          await _handleSubmitted(question);
         },
         child: Padding(
           padding: const EdgeInsets.all(12.0),

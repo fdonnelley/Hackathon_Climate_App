@@ -32,6 +32,12 @@ class AnalyticsController extends GetxController {
   // Total miles traveled
   final RxDouble totalMiles = 0.0.obs;
   
+  // Maximum weekly emission value for chart scaling
+  final RxDouble maxWeeklyEmission = 0.0.obs;
+  
+  // Weekly percentage change (positive = increase, negative = decrease)
+  final RxDouble weeklyChangePercentage = 0.0.obs;
+  
   @override
   void onInit() {
     super.onInit();
@@ -85,9 +91,7 @@ class AnalyticsController extends GetxController {
   
   /// Get the start of the week (Sunday) for a given date
   DateTime _getStartOfWeek(DateTime date) {
-    // Start of week is Sunday (weekday 7 in DateTime, but we want 0-based)
-    final difference = date.weekday;
-    return date.subtract(Duration(days: difference));
+    return date.subtract(Duration(days: date.weekday % 7));
   }
   
   /// Get short month name
@@ -110,7 +114,7 @@ class AnalyticsController extends GetxController {
     
     double maxValue = 0;
     for (var entry in weeklyEmissions) {
-      final value = entry['value'] as double;
+      final value = entry['emissions'] as double;
       if (value > maxValue) {
         maxValue = value;
       }
@@ -127,8 +131,8 @@ class AnalyticsController extends GetxController {
     // Find the max value
     double maxValue = 0;
     for (final item in weeklyEmissions) {
-      if ((item['value'] as num) > maxValue) {
-        maxValue = (item['value'] as num).toDouble();
+      if ((item['emissions'] as num) > maxValue) {
+        maxValue = (item['emissions'] as num).toDouble();
       }
     }
     
@@ -180,7 +184,7 @@ class AnalyticsController extends GetxController {
     // Find the maximum value for color scaling
     double maxValue = 0;
     for (final item in weeklyEmissions) {
-      final value = item['value'] as double;
+      final value = item['emissions'] as double;
       if (value > maxValue) {
         maxValue = value;
       }
@@ -189,7 +193,7 @@ class AnalyticsController extends GetxController {
     // Create bar chart groups
     for (int i = 0; i < weeklyEmissions.length; i++) {
       final item = weeklyEmissions[i];
-      final value = item['value'] as double;
+      final value = item['emissions'] as double;
       
       // Calculate a color from green to red based on percentage of max
       Color barColor;
@@ -253,25 +257,96 @@ class AnalyticsController extends GetxController {
     });
   }
   
-  /// Generate weekly emissions data for the selected week
+  /// Generate weekly emissions data based on selected week
   void _generateWeeklyEmissionsData() {
-    // Clear previous data
     weeklyEmissions.clear();
     
-    // Get the selected week's start and end dates
-    final startDate = _getStartOfWeek(selectedWeek.value);
-    final endDate = startDate.add(const Duration(days: 6));
+    // Get non-recursive emissions data
+    List<Map<String, dynamic>> emissionsData = _generateWeeklyEmissionsDataWithoutRecursion();
+    
+    // Add data to observable list
+    weeklyEmissions.addAll(emissionsData);
+    
+    // Calculate max emission value for chart scaling
+    double maxEmission = 0;
+    for (final item in weeklyEmissions) {
+      final emissions = item['emissions'] as double;
+      if (emissions > maxEmission) {
+        maxEmission = emissions;
+      }
+    }
+    maxWeeklyEmission.value = maxEmission > 0 ? maxEmission : 10.0;
+    
+    // Calculate week-over-week percentage change
+    _calculateWeeklyChangePercentage();
+    
+    // If we have no data for this week, create empty data
+    if (weeklyEmissions.isEmpty) {
+      _generateEmptyWeekData();
+    }
+  }
+  
+  /// Calculate percentage change in emissions compared to previous week
+  void _calculateWeeklyChangePercentage() {
+    // Get current week's total emissions
+    double currentWeekTotal = 0;
+    for (final item in weeklyEmissions) {
+      currentWeekTotal += item['emissions'] as double;
+    }
+    
+    // Store the current week's data
+    final currentWeekData = List<Map<String, dynamic>>.from(weeklyEmissions);
+    
+    // Get previous week's data
+    final DateTime previousWeekDate = selectedWeek.value.subtract(const Duration(days: 7));
+    
+    // Save current selected week
+    final DateTime savedCurrentWeek = selectedWeek.value;
+    
+    // Temporarily set to previous week
+    selectedWeek.value = previousWeekDate;
+    
+    // Generate data for previous week without recursive call to _calculateWeeklyChangePercentage
+    List<Map<String, dynamic>> previousWeekEmissions = _generateWeeklyEmissionsDataWithoutRecursion();
+    
+    // Calculate previous week's total
+    double previousWeekTotal = 0;
+    for (final item in previousWeekEmissions) {
+      previousWeekTotal += item['emissions'] as double;
+    }
+    
+    // Restore current week's data
+    selectedWeek.value = savedCurrentWeek;
+    weeklyEmissions.clear();
+    weeklyEmissions.addAll(currentWeekData);
+    
+    // Calculate percentage change
+    if (previousWeekTotal > 0) {
+      final change = ((currentWeekTotal - previousWeekTotal) / previousWeekTotal) * 100;
+      weeklyChangePercentage.value = change;
+    } else if (currentWeekTotal > 0) {
+      weeklyChangePercentage.value = 100; // Previous week had zero emissions
+    } else {
+      weeklyChangePercentage.value = 0; // Both weeks had zero emissions
+    }
+  }
+  
+  /// Generate weekly emissions data without calculating weekly percentage change
+  List<Map<String, dynamic>> _generateWeeklyEmissionsDataWithoutRecursion() {
+    List<Map<String, dynamic>> result = [];
+    
+    // Determine start and end dates for the selected week
+    final DateTime startDate = _getStartOfWeek(selectedWeek.value);
+    final DateTime endDate = startDate.add(const Duration(days: 6));
     
     // Check if we have any activities
     if (_homeController.recentActivities.isEmpty) {
-      _generateEmptyWeekData();
-      return;
+      return _getEmptyWeekData();
     }
     
-    // Filter activities for the selected week
-    final List<Map<String, dynamic>> weekActivities = _homeController.recentActivities
+    // Filter activities that occurred during the selected week
+    final weekActivities = _homeController.recentActivities
         .where((activity) {
-          // Skip activities with no date
           if (activity['date'] == null) return false;
           
           final DateTime activityDate = activity['date'] as DateTime;
@@ -283,11 +358,24 @@ class AnalyticsController extends GetxController {
         .toList();
     
     // Create a map to store emissions by day of week
-    final Map<int, double> emissionsByDay = {};
+    final Map<int, Map<String, dynamic>> emissionsByDay = {};
     
-    // Initialize all days to zero
+    // Initialize all days with zero emissions
     for (int i = 0; i < 7; i++) {
-      emissionsByDay[i] = 0;
+      final DateTime dayDate = startDate.add(Duration(days: i));
+      final String dayName = _getDayName(dayDate.weekday);
+      
+      emissionsByDay[i] = {
+        'day': dayName,
+        'emissions': 0.0,
+        'categories': <String, double>{
+          'Transportation': 0.0,
+          'Energy': 0.0,
+          'Food': 0.0,
+          'Waste': 0.0,
+          'Other': 0.0,
+        }
+      };
     }
     
     // Aggregate emissions by day
@@ -297,39 +385,99 @@ class AnalyticsController extends GetxController {
         final double emissions = (activity['emissions'] as num).toDouble();
         
         // Calculate day of week (0 = Sunday, 6 = Saturday)
-        final dayOfWeek = date.weekday % 7;
+        final int dayOfWeek = date.weekday % 7;
         
         // Add emissions to the corresponding day
-        emissionsByDay[dayOfWeek] = (emissionsByDay[dayOfWeek] ?? 0) + emissions;
+        final currentEmissions = emissionsByDay[dayOfWeek]!['emissions'] as double;
+        emissionsByDay[dayOfWeek]!['emissions'] = currentEmissions + emissions;
+        
+        // Determine category for this activity
+        String category = 'Other';
+        final type = (activity['type'] as String?)?.toLowerCase() ?? '';
+        
+        if (_isTransportationCategory(activity)) {
+          category = 'Transportation';
+        } else if (type.contains('energy') || type.contains('electric') || type.contains('power')) {
+          category = 'Energy';
+        } else if (type.contains('food') || type.contains('meal') || type.contains('eat') || type.contains('vegetable') || type.contains('fruit')) {
+          category = 'Food';
+        } else if (type.contains('waste') || type.contains('recycl') || type.contains('trash')) {
+          category = 'Waste';
+        }
+        
+        // Add to category total
+        final Map<String, double> categories = 
+            emissionsByDay[dayOfWeek]!['categories'] as Map<String, double>;
+        categories[category] = (categories[category] ?? 0) + emissions;
       }
     }
     
     // Convert map to list format for the chart
-    emissionsByDay.forEach((day, emissions) {
-      weeklyEmissions.add({
-        'day': day,
-        'value': emissions,
-      });
+    emissionsByDay.forEach((day, data) {
+      result.add(data);
     });
     
-    // Sort by day of week
-    weeklyEmissions.sort((a, b) => (a['day'] as int).compareTo(b['day'] as int));
+    // Sort by day of week (0 = Sunday, 6 = Saturday)
+    result.sort((a, b) {
+      const dayOrder = {'Sunday': 0, 'Monday': 1, 'Tuesday': 2, 'Wednesday': 3, 'Thursday': 4, 'Friday': 5, 'Saturday': 6};
+      return dayOrder[a['day']]!.compareTo(dayOrder[b['day']]!);
+    });
     
-    // If we have no data for this week, create empty data
-    if (weeklyEmissions.isEmpty) {
-      _generateEmptyWeekData();
+    return result;
+  }
+  
+  /// Get empty week data for display when no real data exists
+  List<Map<String, dynamic>> _getEmptyWeekData() {
+    List<Map<String, dynamic>> emptyData = [];
+    const dayNames = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+    
+    for (int i = 0; i < 7; i++) {
+      emptyData.add({
+        'day': dayNames[i],
+        'emissions': 0.0,
+        'categories': <String, double>{
+          'Transportation': 0.0,
+          'Energy': 0.0,
+          'Food': 0.0,
+          'Waste': 0.0,
+          'Other': 0.0,
+        }
+      });
     }
+    
+    return emptyData;
+  }
+  
+  /// Get day name from weekday number
+  String _getDayName(int weekday) {
+    const dayNames = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+    return dayNames[weekday % 7]; // Adjust to make Sunday (7) map to index 0
   }
   
   /// Generate empty week data for display when no real data exists
   void _generateEmptyWeekData() {
     weeklyEmissions.clear();
+    const dayNames = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+    
     for (int i = 0; i < 7; i++) {
       weeklyEmissions.add({
-        'day': i,
-        'value': 0.0,
+        'day': dayNames[i],
+        'emissions': 0.0,
+        'categories': <String, double>{
+          'Transportation': 0.0,
+          'Energy': 0.0,
+          'Food': 0.0,
+          'Waste': 0.0,
+          'Other': 0.0,
+        }
       });
     }
+    
+    // Reset max weekly emission to default
+    maxWeeklyEmission.value = 10.0;
+    
+    // Reset weekly change percentage
+    weeklyChangePercentage.value = 0.0;
   }
   
   /// Generate carbon footprint breakdown by category
@@ -534,14 +682,14 @@ class AnalyticsController extends GetxController {
     modeToMiles.forEach((mode, miles) {
       final percentage = (miles / totalMilesValue) * 100;
       milesByMode.add({
-        'label': mode,
-        'value': miles,
+        'mode': mode,
+        'miles': miles,
         'percentage': percentage,
       });
     });
     
     // Sort by value (highest to lowest)
-    milesByMode.sort((a, b) => (b['value'] as double).compareTo(a['value'] as double));
+    milesByMode.sort((a, b) => (b['miles'] as double).compareTo(a['miles'] as double));
   }
   
   /// Check if activity is a transportation category
