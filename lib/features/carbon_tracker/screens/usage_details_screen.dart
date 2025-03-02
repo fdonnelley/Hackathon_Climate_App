@@ -117,7 +117,7 @@ class UsageDetailsScreen extends StatelessWidget {
                                 ),
                               ),
                               Text(
-                                '${EmissionsUtils.formatPounds(EmissionsUtils.kgToPounds(weeklyEmissions))} lbs',
+                                '${EmissionsUtils.formatPounds(weeklyEmissions)} lbs',
                                 style: theme.textTheme.headlineSmall?.copyWith(
                                   color: Colors.white,
                                   fontWeight: FontWeight.bold,
@@ -234,7 +234,7 @@ class UsageDetailsScreen extends StatelessWidget {
                                   ),
                                   const SizedBox(width: 8),
                                   Text(
-                                    '${_getTypeDisplayName(entry.key)}: ${EmissionsUtils.formatPounds(EmissionsUtils.kgToPounds(entry.value))} lbs (${(entry.value / homeController.weeklyEmissions.value * 100).toStringAsFixed(0)}%)',
+                                    '${_getTypeDisplayName(entry.key)}: ${EmissionsUtils.formatPounds(entry.value)} lbs (${(entry.value / homeController.weeklyEmissions.value * 100).toStringAsFixed(0)}%)',
                                     style: theme.textTheme.bodyMedium,
                                   ),
                                 ],
