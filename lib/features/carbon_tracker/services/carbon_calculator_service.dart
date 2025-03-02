@@ -118,7 +118,7 @@ class CarbonCalculatorService {
     double avgGasEmissions = calculateGasEmissions(80);
     
     // Average weekly car mileage: 250 miles with 25 MPG
-    double avgTransportationEmissions = (250 / 25) * _gasolineEmissionFactor * weeksPerMonth;
+    double avgTransportationEmissions = (100 / 25) * _gasolineEmissionFactor * weeksPerMonth;
     
     return avgElectricityEmissions + avgGasEmissions + avgTransportationEmissions;
   }
